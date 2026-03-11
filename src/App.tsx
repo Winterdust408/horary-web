@@ -24,6 +24,41 @@ function formatDeg(deg: number) {
   return `${d}°${pad2(m)}'`
 }
 
+/** Format decimal degrees as degrees and arc minutes (e.g. for aspect orbs). */
+function formatDegArcMin(deg: number): string {
+  const d = Math.floor(deg)
+  const mFloat = (deg - d) * 60
+  const m = Math.round(mFloat)
+  if (m >= 60) return `${d + 1}° 00′`
+  return `${d}° ${pad2(m)}′`
+}
+
+/** Parse DMS (degrees, minutes, seconds) to decimal degrees. Sign: N/E = positive, S/W = negative. */
+function dmsToDecimal(
+  deg: number,
+  min: number,
+  sec: number,
+  sign: 'N' | 'S' | 'E' | 'W',
+): number {
+  const abs = deg + min / 60 + sec / 3600
+  if (sign === 'S' || sign === 'W') return -abs
+  return abs
+}
+
+/** Convert decimal degrees to DMS components (absolute values) and direction. */
+function decimalToDMS(
+  decimal: number,
+  isLat: boolean,
+): { deg: number; min: number; sec: number; sign: 'N' | 'S' | 'E' | 'W' } {
+  const abs = Math.abs(decimal)
+  const d = Math.floor(abs)
+  const mFrac = (abs - d) * 60
+  const m = Math.floor(mFrac)
+  const s = Math.round((mFrac - m) * 60)
+  if (isLat) return { deg: d, min: m, sec: s, sign: decimal >= 0 ? 'N' : 'S' }
+  return { deg: d, min: m, sec: s, sign: decimal >= 0 ? 'E' : 'W' }
+}
+
 function dtLocalNowValue() {
   const now = new Date()
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}T${pad2(
@@ -33,15 +68,33 @@ function dtLocalNowValue() {
 
 function App() {
   const [dateTimeLocal, setDateTimeLocal] = useState(dtLocalNowValue())
-  const [latitude, setLatitude] = useState('51.5074')
-  const [longitude, setLongitude] = useState('-0.1278')
+  // Latitude: degrees, minutes, seconds, N/S
+  const [latDeg, setLatDeg] = useState('51')
+  const [latMin, setLatMin] = useState('30')
+  const [latSec, setLatSec] = useState('27')
+  const [latSign, setLatSign] = useState<'N' | 'S'>('N')
+  // Longitude: degrees, minutes, seconds, E/W
+  const [lonDeg, setLonDeg] = useState('0')
+  const [lonMin, setLonMin] = useState('7')
+  const [lonSec, setLonSec] = useState('40')
+  const [lonSign, setLonSign] = useState<'E' | 'W'>('W')
 
   const parsed = useMemo(() => {
     const dt = new Date(dateTimeLocal)
-    const lat = Number(latitude)
-    const lon = Number(longitude)
-    return { dt, lat, lon }
-  }, [dateTimeLocal, latitude, longitude])
+    const latDec = dmsToDecimal(
+      Number(latDeg) || 0,
+      Number(latMin) || 0,
+      Number(latSec) || 0,
+      latSign,
+    )
+    const lonDec = dmsToDecimal(
+      Number(lonDeg) || 0,
+      Number(lonMin) || 0,
+      Number(lonSec) || 0,
+      lonSign,
+    )
+    return { dt, lat: latDec, lon: lonDec }
+  }, [dateTimeLocal, latDeg, latMin, latSec, latSign, lonDeg, lonMin, lonSec, lonSign])
 
   const chart = useMemo<{ summary?: ChartSummary; error?: string }>(() => {
     const { dt, lat, lon } = parsed
@@ -131,12 +184,16 @@ function App() {
       }
       const aspectCalc = new AspectCalculator(aspectPoints)
       const astroAspects: any[] = aspectCalc.radix(aspectPoints)
-      const aspectsList = astroAspects.map((a) => ({
-        from: a.point?.name ?? '',
-        to: a.toPoint?.name ?? '',
-        type: a.aspect?.name ?? '',
-        orb: typeof a.precision === 'number' ? `${a.precision.toFixed(2)}°` : String(a.precision ?? ''),
-      }))
+      const aspectsList = astroAspects.map((a) => {
+        const precNum = typeof a.precision === 'number' ? a.precision : parseFloat(String(a.precision ?? 0))
+        const orbStr = Number.isFinite(precNum) ? formatDegArcMin(precNum) : String(a.precision ?? '')
+        return {
+          from: a.point?.name ?? '',
+          to: a.toPoint?.name ?? '',
+          type: a.aspect?.name ?? '',
+          orb: orbStr,
+        }
+      })
 
       const summary: ChartSummary = {
         ascendant: `${asc.Sign?.label ?? asc.Sign?.key ?? ''} ${
@@ -164,7 +221,7 @@ function App() {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 24, textAlign: 'left' }}>
-      <h1 style={{ marginBottom: 8 }}>Horary (Regiomontanus) Calculator</h1>
+      <h1 style={{ marginBottom: 8 }}>Horary Calculator</h1>
       <p style={{ marginTop: 0, opacity: 0.8 }}>
         In-browser chart math via <code>circular-natal-horoscope-js</code>. House system: <b>Regiomontanus</b>.
       </p>
@@ -181,15 +238,106 @@ function App() {
         </label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label>
-            Latitude
-            <input value={latitude} onChange={(e) => setLatitude(e.target.value)} style={{ width: '100%' }} />
+            Latitude (degrees °, minutes ′, seconds ″)
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="number"
+                min={0}
+                max={90}
+                value={latDeg}
+                onChange={(e) => setLatDeg(e.target.value)}
+                placeholder="°"
+                style={{ width: 56 }}
+                title="Degrees"
+              />
+              <span>°</span>
+              <input
+                type="number"
+                min={0}
+                max={59}
+                value={latMin}
+                onChange={(e) => setLatMin(e.target.value)}
+                placeholder="′"
+                style={{ width: 56 }}
+                title="Minutes"
+              />
+              <span>′</span>
+              <input
+                type="number"
+                min={0}
+                max={59}
+                value={latSec}
+                onChange={(e) => setLatSec(e.target.value)}
+                placeholder="″"
+                style={{ width: 56 }}
+                title="Seconds"
+              />
+              <span>″</span>
+              <select
+                value={latSign}
+                onChange={(e) => setLatSign(e.target.value as 'N' | 'S')}
+                style={{ marginLeft: 4 }}
+              >
+                <option value="N">N</option>
+                <option value="S">S</option>
+              </select>
+            </div>
           </label>
           <label>
-            Longitude
-            <input value={longitude} onChange={(e) => setLongitude(e.target.value)} style={{ width: '100%' }} />
+            Longitude (degrees °, minutes ′, seconds ″)
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="number"
+                min={0}
+                max={180}
+                value={lonDeg}
+                onChange={(e) => setLonDeg(e.target.value)}
+                placeholder="°"
+                style={{ width: 56 }}
+                title="Degrees"
+              />
+              <span>°</span>
+              <input
+                type="number"
+                min={0}
+                max={59}
+                value={lonMin}
+                onChange={(e) => setLonMin(e.target.value)}
+                placeholder="′"
+                style={{ width: 56 }}
+                title="Minutes"
+              />
+              <span>′</span>
+              <input
+                type="number"
+                min={0}
+                max={59}
+                value={lonSec}
+                onChange={(e) => setLonSec(e.target.value)}
+                placeholder="″"
+                style={{ width: 56 }}
+                title="Seconds"
+              />
+              <span>″</span>
+              <select
+                value={lonSign}
+                onChange={(e) => setLonSign(e.target.value as 'E' | 'W')}
+                style={{ marginLeft: 4 }}
+              >
+                <option value="E">E</option>
+                <option value="W">W</option>
+              </select>
+            </div>
           </label>
         </div>
       </div>
+
+      {chart.summary ? (
+        <div style={{ marginTop: 16, padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8 }}>
+          <h2 style={{ marginTop: 0 }}>Chart wheel</h2>
+          <ChartWheel data={chart.summary.astroChartData} />
+        </div>
+      ) : null}
 
       <div style={{ marginTop: 16 }}>
         {chart.error ? (
@@ -242,16 +390,9 @@ function App() {
                 ))}
               </ul>
               <p style={{ opacity: 0.75 }}>
-                Wheel below shows the same planet–planet aspects from the chart center.
+                The chart wheel above shows the same planet–planet aspects from the chart center.
               </p>
             </div>
-          </div>
-        ) : null}
-
-        {chart.summary ? (
-          <div style={{ marginTop: 16, padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8 }}>
-            <h2 style={{ marginTop: 0 }}>Chart wheel</h2>
-            <ChartWheel data={chart.summary.astroChartData} />
           </div>
         ) : null}
       </div>
