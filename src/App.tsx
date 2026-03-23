@@ -44,6 +44,15 @@ function formatDegArcMin(deg: number): string {
   return `${d}° ${pad2(m)}′`
 }
 
+/** Compact arc-minute format for small wheel labels. */
+function formatDegArcMinCompact(deg: number): string {
+  const d = Math.floor(deg)
+  const mFloat = (deg - d) * 60
+  const m = Math.round(mFloat)
+  if (m >= 60) return `${d + 1}°00′`
+  return `${d}°${pad2(m)}′`
+}
+
 /** Parse DM (degrees, minutes) to decimal degrees. Sign: N/E = positive, S/W = negative. */
 function dmToDecimal(
   deg: number,
@@ -497,11 +506,32 @@ function ChartWheel({ data }: { data: { planets: Record<string, [number]>; cusps
     if (el) el.innerHTML = ''
     try {
       const chart = new AstroChart(containerId, 520, 520, {
+        SYMBOL_SCALE: 0.72,
+        POINTS_TEXT_SIZE: 7,
+        SYMBOL_AXIS_STROKE: 2.2,
         SHOW_DIGNITIES_TEXT: false,
       })
       const radix = chart.radix({ planets: data.planets, cusps: data.cusps })
       // Draw only the precomputed planet–planet aspects (no MC/IC)
       radix.aspects(data.aspects)
+      // Replace default whole-degree wheel labels with degree+arc-minute labels.
+      const paperId = `${containerId}-astrology`
+      const planetsLayer = document.getElementById(`${paperId}-radix-planets`)
+      if (planetsLayer) {
+        const symbols = planetsLayer.querySelectorAll<SVGElement>(`[id^="${paperId}-radix-planets-"]`)
+        symbols.forEach((symbolEl) => {
+          const name = symbolEl.id.replace(`${paperId}-radix-planets-`, '')
+          const eclipticDeg = data.planets[name]?.[0]
+          if (!Number.isFinite(eclipticDeg)) return
+          let next: Element | null = symbolEl.nextElementSibling
+          while (next && next.tagName.toLowerCase() !== 'text') {
+            next = next.nextElementSibling
+          }
+          if (next && next.tagName.toLowerCase() === 'text') {
+            next.textContent = formatDegArcMinCompact(degreesWithinSign(eclipticDeg))
+          }
+        })
+      }
     } catch (e) {
       if (el) el.textContent = e instanceof Error ? e.message : 'Failed to render chart.'
     }
