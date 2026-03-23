@@ -118,6 +118,14 @@ const CITIES: Array<{ name: string; country: string; lat: number; lon: number }>
   { name: 'Vancouver', country: 'Canada', lat: 49.2827, lon: -123.1207 },
 ]
 
+const WHEEL_ASPECTS = {
+  conjunction: { degree: 0, orbit: 5, color: 'transparent' },
+  sextile: { degree: 60, orbit: 5, color: '#5dade2' },
+  square: { degree: 90, orbit: 5, color: '#FF4500' },
+  trine: { degree: 120, orbit: 5, color: '#27AE60' },
+  opposition: { degree: 180, orbit: 5, color: '#27AE60' },
+}
+
 function App() {
   const [dateTimeLocal, setDateTimeLocal] = useState(dtLocalNowValue())
   const [locationMode, setLocationMode] = useState<'manual' | 'city' | 'geolocation'>('manual')
@@ -259,7 +267,7 @@ function App() {
         if (name === 'Mc' || name === 'Ic') continue
         aspectPoints[name] = coords
       }
-      const aspectCalc = new AspectCalculator(aspectPoints)
+      const aspectCalc = new AspectCalculator(aspectPoints, { ASPECTS: WHEEL_ASPECTS } as any)
       const astroAspects: any[] = aspectCalc.radix(aspectPoints)
       const aspectsList = astroAspects.map((a) => {
         const precNum = typeof a.precision === 'number' ? a.precision : parseFloat(String(a.precision ?? 0))
@@ -477,7 +485,7 @@ function App() {
                 ))}
               </ul>
 
-              <h2 style={{ marginTop: 16 }}>Aspects (planet–planet)</h2>
+              <h2 style={{ marginTop: 16 }}>Aspects</h2>
               <ul style={{ marginTop: 8 }}>
                 {chart.summary.aspectsList.length === 0 && <li>No aspects found with default orbs.</li>}
                 {chart.summary.aspectsList.map((a, idx) => (
@@ -510,6 +518,7 @@ function ChartWheel({ data }: { data: { planets: Record<string, [number]>; cusps
         POINTS_TEXT_SIZE: 7,
         SYMBOL_AXIS_STROKE: 2.2,
         SHOW_DIGNITIES_TEXT: false,
+        ASPECTS: WHEEL_ASPECTS,
       })
       const radix = chart.radix({ planets: data.planets, cusps: data.cusps })
       // Draw only the precomputed planet–planet aspects (no MC/IC)
