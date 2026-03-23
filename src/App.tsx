@@ -496,7 +496,9 @@ function ChartWheel({ data }: { data: { planets: Record<string, [number]>; cusps
     const el = document.getElementById(containerId)
     if (el) el.innerHTML = ''
     try {
-      const chart = new AstroChart(containerId, 520, 520)
+      const chart = new AstroChart(containerId, 520, 520, {
+        SHOW_DIGNITIES_TEXT: false,
+      })
       const radix = chart.radix({ planets: data.planets, cusps: data.cusps })
       // Draw only the precomputed planet–planet aspects (no MC/IC)
       radix.aspects(data.aspects)
