@@ -5,7 +5,11 @@ import './App.css'
 
 type ChartSummary = {
   ascendant: string
+  ascendantSign: string
+  ascendantDeg: number
   midheaven: string
+  midheavenSign: string
+  midheavenDeg: number
   time: { timezone: string; local: string; utc: string }
   houses: Array<{ house: number; eclipticDegrees: number; sign: string; formatted: string }>
   planets: Array<{ key: string; name: string; eclipticDegrees: number; sign: string; formatted: string }>
@@ -24,6 +28,13 @@ function formatDeg(deg: number) {
   return `${d}°${pad2(m)}'`
 }
 
+/** Ecliptic longitude (0–360°) to degrees within sign (0–30°). Used so we display e.g. "Pisces 21°13'" not "Pisces 351°13'". */
+function degreesWithinSign(eclipticLongitude: number): number {
+  if (!Number.isFinite(eclipticLongitude)) return 0
+  const d = eclipticLongitude % 30
+  return d < 0 ? d + 30 : d
+}
+
 /** Format decimal degrees as degrees and arc minutes (e.g. for aspect orbs). */
 function formatDegArcMin(deg: number): string {
   const d = Math.floor(deg)
@@ -33,30 +44,28 @@ function formatDegArcMin(deg: number): string {
   return `${d}° ${pad2(m)}′`
 }
 
-/** Parse DMS (degrees, minutes, seconds) to decimal degrees. Sign: N/E = positive, S/W = negative. */
-function dmsToDecimal(
+/** Parse DM (degrees, minutes) to decimal degrees. Sign: N/E = positive, S/W = negative. */
+function dmToDecimal(
   deg: number,
   min: number,
-  sec: number,
   sign: 'N' | 'S' | 'E' | 'W',
 ): number {
-  const abs = deg + min / 60 + sec / 3600
+  const abs = deg + min / 60
   if (sign === 'S' || sign === 'W') return -abs
   return abs
 }
 
-/** Convert decimal degrees to DMS components (absolute values) and direction. */
-function decimalToDMS(
+/** Convert decimal degrees to DM (degrees and minutes only). */
+function decimalToDM(
   decimal: number,
   isLat: boolean,
-): { deg: number; min: number; sec: number; sign: 'N' | 'S' | 'E' | 'W' } {
+): { deg: number; min: number; sign: 'N' | 'S' | 'E' | 'W' } {
   const abs = Math.abs(decimal)
   const d = Math.floor(abs)
-  const mFrac = (abs - d) * 60
-  const m = Math.floor(mFrac)
-  const s = Math.round((mFrac - m) * 60)
-  if (isLat) return { deg: d, min: m, sec: s, sign: decimal >= 0 ? 'N' : 'S' }
-  return { deg: d, min: m, sec: s, sign: decimal >= 0 ? 'E' : 'W' }
+  const m = Math.round((abs - d) * 60)
+  const [min, deg] = m >= 60 ? [0, d + 1] : [m, d]
+  if (isLat) return { deg, min, sign: decimal >= 0 ? 'N' : 'S' }
+  return { deg, min, sign: decimal >= 0 ? 'E' : 'W' }
 }
 
 function dtLocalNowValue() {
@@ -66,35 +75,94 @@ function dtLocalNowValue() {
   )}:${pad2(now.getMinutes())}`
 }
 
+/** Cities with coordinates for location-by-city (name, lat, lon). */
+const CITIES: Array<{ name: string; country: string; lat: number; lon: number }> = [
+  { name: 'London', country: 'United Kingdom', lat: 51.5074, lon: -0.1278 },
+  { name: 'New York', country: 'USA', lat: 40.7128, lon: -74.006 },
+  { name: 'Los Angeles', country: 'USA', lat: 34.0522, lon: -118.2437 },
+  { name: 'Chicago', country: 'USA', lat: 41.8781, lon: -87.6298 },
+  { name: 'Toronto', country: 'Canada', lat: 43.6532, lon: -79.3832 },
+  { name: 'Sydney', country: 'Australia', lat: -33.8688, lon: 151.2093 },
+  { name: 'Melbourne', country: 'Australia', lat: -37.8136, lon: 144.9631 },
+  { name: 'Paris', country: 'France', lat: 48.8566, lon: 2.3522 },
+  { name: 'Berlin', country: 'Germany', lat: 52.52, lon: 13.405 },
+  { name: 'Madrid', country: 'Spain', lat: 40.4168, lon: -3.7038 },
+  { name: 'Rome', country: 'Italy', lat: 41.9028, lon: 12.4964 },
+  { name: 'Amsterdam', country: 'Netherlands', lat: 52.3676, lon: 4.9041 },
+  { name: 'Tokyo', country: 'Japan', lat: 35.6762, lon: 139.6503 },
+  { name: 'Singapore', country: 'Singapore', lat: 1.3521, lon: 103.8198 },
+  { name: 'Hong Kong', country: 'Hong Kong', lat: 22.3193, lon: 114.1694 },
+  { name: 'Mumbai', country: 'India', lat: 19.076, lon: 72.8777 },
+  { name: 'Dubai', country: 'UAE', lat: 25.2048, lon: 55.2708 },
+  { name: 'Cairo', country: 'Egypt', lat: 30.0444, lon: 31.2357 },
+  { name: 'Johannesburg', country: 'South Africa', lat: -26.2041, lon: 28.0473 },
+  { name: 'Mexico City', country: 'Mexico', lat: 19.4326, lon: -99.1332 },
+  { name: 'São Paulo', country: 'Brazil', lat: -23.5505, lon: -46.6333 },
+  { name: 'Buenos Aires', country: 'Argentina', lat: -34.6037, lon: -58.3816 },
+  { name: 'Moscow', country: 'Russia', lat: 55.7558, lon: 37.6173 },
+  { name: 'Istanbul', country: 'Turkey', lat: 41.0082, lon: 28.9784 },
+  { name: 'Dublin', country: 'Ireland', lat: 53.3498, lon: -6.2603 },
+  { name: 'Edinburgh', country: 'United Kingdom', lat: 55.9533, lon: -3.1883 },
+  { name: 'San Francisco', country: 'USA', lat: 37.7749, lon: -122.4194 },
+  { name: 'Washington DC', country: 'USA', lat: 38.9072, lon: -77.0369 },
+  { name: 'Seattle', country: 'USA', lat: 47.6062, lon: -122.3321 },
+  { name: 'Vancouver', country: 'Canada', lat: 49.2827, lon: -123.1207 },
+]
+
 function App() {
   const [dateTimeLocal, setDateTimeLocal] = useState(dtLocalNowValue())
-  // Latitude: degrees, minutes, seconds, N/S
+  const [locationMode, setLocationMode] = useState<'manual' | 'city' | 'geolocation'>('manual')
+  // Latitude: degrees, minutes, N/S (no seconds)
   const [latDeg, setLatDeg] = useState('51')
   const [latMin, setLatMin] = useState('30')
-  const [latSec, setLatSec] = useState('27')
   const [latSign, setLatSign] = useState<'N' | 'S'>('N')
-  // Longitude: degrees, minutes, seconds, E/W
   const [lonDeg, setLonDeg] = useState('0')
   const [lonMin, setLonMin] = useState('7')
-  const [lonSec, setLonSec] = useState('40')
   const [lonSign, setLonSign] = useState<'E' | 'W'>('W')
+  const [geolocError, setGeolocError] = useState<string | null>(null)
+  const [selectedCityIndex, setSelectedCityIndex] = useState<number | null>(null)
+
+  const applyLatLon = (lat: number, lon: number) => {
+    const latDM = decimalToDM(lat, true)
+    const lonDM = decimalToDM(lon, false)
+    setLatDeg(String(latDM.deg))
+    setLatMin(String(latDM.min))
+    setLatSign(latDM.sign)
+    setLonDeg(String(lonDM.deg))
+    setLonMin(String(lonDM.min))
+    setLonSign(lonDM.sign)
+  }
+
+  const handleUseMyLocation = () => {
+    setGeolocError(null)
+    if (!navigator.geolocation) {
+      setGeolocError('Geolocation is not supported by your browser.')
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        applyLatLon(pos.coords.latitude, pos.coords.longitude)
+        setLocationMode('manual')
+      },
+      (err) => setGeolocError(err.message || 'Could not get location.'),
+      { enableHighAccuracy: true }
+    )
+  }
+
+  const handleCitySelect = (index: string) => {
+    const i = parseInt(index, 10)
+    if (Number.isNaN(i) || i < 0 || i >= CITIES.length) return
+    const c = CITIES[i]
+    setSelectedCityIndex(i)
+    applyLatLon(c.lat, c.lon)
+  }
 
   const parsed = useMemo(() => {
     const dt = new Date(dateTimeLocal)
-    const latDec = dmsToDecimal(
-      Number(latDeg) || 0,
-      Number(latMin) || 0,
-      Number(latSec) || 0,
-      latSign,
-    )
-    const lonDec = dmsToDecimal(
-      Number(lonDeg) || 0,
-      Number(lonMin) || 0,
-      Number(lonSec) || 0,
-      lonSign,
-    )
+    const latDec = dmToDecimal(Number(latDeg) || 0, Number(latMin) || 0, latSign)
+    const lonDec = dmToDecimal(Number(lonDeg) || 0, Number(lonMin) || 0, lonSign)
     return { dt, lat: latDec, lon: lonDec }
-  }, [dateTimeLocal, latDeg, latMin, latSec, latSign, lonDeg, lonMin, lonSec, lonSign])
+  }, [dateTimeLocal, latDeg, latMin, latSign, lonDeg, lonMin, lonSign])
 
   const chart = useMemo<{ summary?: ChartSummary; error?: string }>(() => {
     const { dt, lat, lon } = parsed
@@ -199,9 +267,13 @@ function App() {
         ascendant: `${asc.Sign?.label ?? asc.Sign?.key ?? ''} ${
           asc.ChartPosition?.Ecliptic?.ArcDegreesFormatted30 ?? formatDeg(asc.ChartPosition?.Ecliptic?.DecimalDegrees ?? 0)
         }`,
+        ascendantSign: asc.Sign?.label ?? asc.Sign?.key ?? '',
+        ascendantDeg: asc.ChartPosition?.Ecliptic?.DecimalDegrees ?? 0,
         midheaven: `${mc.Sign?.label ?? mc.Sign?.key ?? ''} ${
           mc.ChartPosition?.Ecliptic?.ArcDegreesFormatted30 ?? formatDeg(mc.ChartPosition?.Ecliptic?.DecimalDegrees ?? 0)
         }`,
+        midheavenSign: mc.Sign?.label ?? mc.Sign?.key ?? '',
+        midheavenDeg: mc.ChartPosition?.Ecliptic?.DecimalDegrees ?? 0,
         houses,
         planets,
         time: {
@@ -238,95 +310,111 @@ function App() {
         </label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label>
-            Latitude (degrees °, minutes ′, seconds ″)
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-              <input
-                type="number"
-                min={0}
-                max={90}
-                value={latDeg}
-                onChange={(e) => setLatDeg(e.target.value)}
-                placeholder="°"
-                style={{ width: 56 }}
-                title="Degrees"
-              />
-              <span>°</span>
-              <input
-                type="number"
-                min={0}
-                max={59}
-                value={latMin}
-                onChange={(e) => setLatMin(e.target.value)}
-                placeholder="′"
-                style={{ width: 56 }}
-                title="Minutes"
-              />
-              <span>′</span>
-              <input
-                type="number"
-                min={0}
-                max={59}
-                value={latSec}
-                onChange={(e) => setLatSec(e.target.value)}
-                placeholder="″"
-                style={{ width: 56 }}
-                title="Seconds"
-              />
-              <span>″</span>
+            Location
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <select
-                value={latSign}
-                onChange={(e) => setLatSign(e.target.value as 'N' | 'S')}
-                style={{ marginLeft: 4 }}
+                value={locationMode}
+                onChange={(e) => setLocationMode(e.target.value as 'manual' | 'city' | 'geolocation')}
+                style={{ width: '100%' }}
               >
-                <option value="N">N</option>
-                <option value="S">S</option>
+                <option value="manual">Enter coordinates (° and ′)</option>
+                <option value="city">Nearest city</option>
+                <option value="geolocation">Use my location</option>
               </select>
-            </div>
-          </label>
-          <label>
-            Longitude (degrees °, minutes ′, seconds ″)
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-              <input
-                type="number"
-                min={0}
-                max={180}
-                value={lonDeg}
-                onChange={(e) => setLonDeg(e.target.value)}
-                placeholder="°"
-                style={{ width: 56 }}
-                title="Degrees"
-              />
-              <span>°</span>
-              <input
-                type="number"
-                min={0}
-                max={59}
-                value={lonMin}
-                onChange={(e) => setLonMin(e.target.value)}
-                placeholder="′"
-                style={{ width: 56 }}
-                title="Minutes"
-              />
-              <span>′</span>
-              <input
-                type="number"
-                min={0}
-                max={59}
-                value={lonSec}
-                onChange={(e) => setLonSec(e.target.value)}
-                placeholder="″"
-                style={{ width: 56 }}
-                title="Seconds"
-              />
-              <span>″</span>
-              <select
-                value={lonSign}
-                onChange={(e) => setLonSign(e.target.value as 'E' | 'W')}
-                style={{ marginLeft: 4 }}
-              >
-                <option value="E">E</option>
-                <option value="W">W</option>
-              </select>
+              {locationMode === 'manual' && (
+                <>
+                  <div style={{ fontSize: 12, opacity: 0.85 }}>Latitude (degrees °, minutes ′)</div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      type="number"
+                      min={0}
+                      max={90}
+                      value={latDeg}
+                      onChange={(e) => setLatDeg(e.target.value)}
+                      placeholder="°"
+                      style={{ width: 56 }}
+                      title="Degrees"
+                    />
+                    <span>°</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={latMin}
+                      onChange={(e) => setLatMin(e.target.value)}
+                      placeholder="′"
+                      style={{ width: 56 }}
+                      title="Minutes"
+                    />
+                    <span>′</span>
+                    <select
+                      value={latSign}
+                      onChange={(e) => setLatSign(e.target.value as 'N' | 'S')}
+                      style={{ marginLeft: 4 }}
+                    >
+                      <option value="N">N</option>
+                      <option value="S">S</option>
+                    </select>
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.85 }}>Longitude (degrees °, minutes ′)</div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      type="number"
+                      min={0}
+                      max={180}
+                      value={lonDeg}
+                      onChange={(e) => setLonDeg(e.target.value)}
+                      placeholder="°"
+                      style={{ width: 56 }}
+                      title="Degrees"
+                    />
+                    <span>°</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={lonMin}
+                      onChange={(e) => setLonMin(e.target.value)}
+                      placeholder="′"
+                      style={{ width: 56 }}
+                      title="Minutes"
+                    />
+                    <span>′</span>
+                    <select
+                      value={lonSign}
+                      onChange={(e) => setLonSign(e.target.value as 'E' | 'W')}
+                      style={{ marginLeft: 4 }}
+                    >
+                      <option value="E">E</option>
+                      <option value="W">W</option>
+                    </select>
+                  </div>
+                </>
+              )}
+              {locationMode === 'city' && (
+                <select
+                  value={selectedCityIndex !== null ? String(selectedCityIndex) : ''}
+                  onChange={(e) => handleCitySelect(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <option value="" disabled>Select a city</option>
+                  {CITIES.map((c, i) => (
+                    <option key={i} value={i}>
+                      {c.name}, {c.country}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {locationMode === 'geolocation' && (
+                <div>
+                  <button type="button" onClick={handleUseMyLocation} style={{ padding: '6px 12px' }}>
+                    Use my location
+                  </button>
+                  {geolocError && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: '#e88' }}>{geolocError}</div>
+                  )}
+                </div>
+              )}
             </div>
           </label>
         </div>
@@ -354,17 +442,17 @@ function App() {
                 <b>UTC:</b> {chart.summary.time.utc || '(unknown)'}
               </div>
               <div>
-                <b>ASC:</b> {chart.summary.ascendant}
+                <b>ASC:</b> {chart.summary.ascendantSign} {formatDeg(degreesWithinSign(chart.summary.ascendantDeg))}
               </div>
               <div>
-                <b>MC:</b> {chart.summary.midheaven}
+                <b>MC:</b> {chart.summary.midheavenSign} {formatDeg(degreesWithinSign(chart.summary.midheavenDeg))}
               </div>
 
               <h2>Houses</h2>
               <ol style={{ marginTop: 8 }}>
                 {chart.summary.houses.map((h) => (
                   <li key={h.house}>
-                    <b>House {h.house}:</b> {h.sign} {h.formatted || formatDeg(h.eclipticDegrees)}
+                    <b>House {h.house}:</b> {h.sign} {formatDeg(degreesWithinSign(h.eclipticDegrees))}
                   </li>
                 ))}
               </ol>
@@ -375,7 +463,7 @@ function App() {
               <ul style={{ marginTop: 8 }}>
                 {chart.summary.planets.map((p) => (
                   <li key={p.key}>
-                    <b>{p.name}:</b> {p.sign} {p.formatted || formatDeg(p.eclipticDegrees)}
+                    <b>{p.name}:</b> {p.sign} {formatDeg(degreesWithinSign(p.eclipticDegrees))}
                   </li>
                 ))}
               </ul>
