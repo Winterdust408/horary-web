@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEventHandler } from 'react'
 import { Horoscope, Origin } from 'circular-natal-horoscope-js/dist/index.js'
 import { Chart as AstroChart, AspectCalculator } from '@astrodraw/astrochart'
 import './App.css'
@@ -10,6 +10,10 @@ type ChartSummary = {
   midheaven: string
   midheavenSign: string
   midheavenDeg: number
+  descendantSign: string
+  descendantDeg: number
+  imumCoeliSign: string
+  imumCoeliDeg: number
   time: { timezone: string; local: string; utc: string }
   houses: Array<{ house: number; eclipticDegrees: number; sign: string; formatted: string }>
   planets: Array<{ key: string; name: string; eclipticDegrees: number; sign: string; formatted: string }>
@@ -84,6 +88,14 @@ function dtLocalNowValue() {
   )}:${pad2(now.getMinutes())}`
 }
 
+function dateLocalNowValue() {
+  return dtLocalNowValue().slice(0, 10)
+}
+
+function timeLocalNowValue() {
+  return dtLocalNowValue().slice(11, 16)
+}
+
 /** Cities with coordinates for location-by-city (name, lat, lon). */
 const CITIES: Array<{ name: string; country: string; lat: number; lon: number }> = [
   { name: 'London', country: 'United Kingdom', lat: 51.5074, lon: -0.1278 },
@@ -118,6 +130,23 @@ const CITIES: Array<{ name: string; country: string; lat: number; lon: number }>
   { name: 'Vancouver', country: 'Canada', lat: 49.2827, lon: -123.1207 },
 ]
 
+/** Human-readable timezone label (Origin.timezone may be a moment-timezone object). */
+function formatTimezoneLabel(origin: any): string {
+  const tz = origin?.timezone
+  if (tz == null || tz === '') return ''
+  if (typeof tz === 'string') return tz
+  if (typeof tz === 'object') {
+    if (typeof tz.name === 'string' && tz.name) return tz.name
+    if (tz._z && typeof tz._z.name === 'string' && tz._z.name) return tz._z.name
+    if (typeof tz.zoneName === 'string' && tz.zoneName) return tz.zoneName
+  }
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+  } catch {
+    return ''
+  }
+}
+
 const WHEEL_ASPECTS = {
   conjunction: { degree: 0, orbit: 5, color: 'transparent' },
   sextile: { degree: 60, orbit: 5, color: '#5dade2' },
@@ -127,17 +156,28 @@ const WHEEL_ASPECTS = {
 }
 
 function App() {
-  const [dateTimeLocal, setDateTimeLocal] = useState(dtLocalNowValue())
-  const [locationMode, setLocationMode] = useState<'manual' | 'city' | 'geolocation'>('manual')
-  // Latitude: degrees, minutes, N/S (no seconds)
+  const [dateInput, setDateInput] = useState(dateLocalNowValue())
+  const [timeInput, setTimeInput] = useState(timeLocalNowValue())
+  const [dateLocal, setDateLocal] = useState(dateLocalNowValue())
+  const [timeLocal, setTimeLocal] = useState(timeLocalNowValue())
+  const [locationMode, setLocationMode] = useState<'manual' | 'city' | 'geolocation'>('geolocation')
+  /** Committed coordinates — used for the chart. */
   const [latDeg, setLatDeg] = useState('51')
   const [latMin, setLatMin] = useState('30')
   const [latSign, setLatSign] = useState<'N' | 'S'>('N')
   const [lonDeg, setLonDeg] = useState('0')
   const [lonMin, setLonMin] = useState('7')
   const [lonSign, setLonSign] = useState<'E' | 'W'>('W')
+  /** Draft coordinates — manual entry; applied on Enter / Enter button. */
+  const [latDegDraft, setLatDegDraft] = useState('51')
+  const [latMinDraft, setLatMinDraft] = useState('30')
+  const [latSignDraft, setLatSignDraft] = useState<'N' | 'S'>('N')
+  const [lonDegDraft, setLonDegDraft] = useState('0')
+  const [lonMinDraft, setLonMinDraft] = useState('7')
+  const [lonSignDraft, setLonSignDraft] = useState<'E' | 'W'>('W')
   const [geolocError, setGeolocError] = useState<string | null>(null)
   const [selectedCityIndex, setSelectedCityIndex] = useState<number | null>(null)
+  const [showUpdatedFeedback, setShowUpdatedFeedback] = useState(false)
 
   const applyLatLon = (lat: number, lon: number) => {
     const latDM = decimalToDM(lat, true)
@@ -148,12 +188,29 @@ function App() {
     setLonDeg(String(lonDM.deg))
     setLonMin(String(lonDM.min))
     setLonSign(lonDM.sign)
+    setLatDegDraft(String(latDM.deg))
+    setLatMinDraft(String(latDM.min))
+    setLatSignDraft(latDM.sign)
+    setLonDegDraft(String(lonDM.deg))
+    setLonMinDraft(String(lonDM.min))
+    setLonSignDraft(lonDM.sign)
   }
+
+  const applyLocationDraft = () => {
+    setLatDeg(latDegDraft)
+    setLatMin(latMinDraft)
+    setLatSign(latSignDraft)
+    setLonDeg(lonDegDraft)
+    setLonMin(lonMinDraft)
+    setLonSign(lonSignDraft)
+  }
+
 
   const handleUseMyLocation = () => {
     setGeolocError(null)
     if (!navigator.geolocation) {
       setGeolocError('Geolocation is not supported by your browser.')
+      setLocationMode('city')
       return
     }
     navigator.geolocation.getCurrentPosition(
@@ -161,7 +218,10 @@ function App() {
         applyLatLon(pos.coords.latitude, pos.coords.longitude)
         setLocationMode('manual')
       },
-      (err) => setGeolocError(err.message || 'Could not get location.'),
+      (err) => {
+        setGeolocError(err.message || 'Could not get location.')
+        setLocationMode('city')
+      },
       { enableHighAccuracy: true }
     )
   }
@@ -174,12 +234,42 @@ function App() {
     applyLatLon(c.lat, c.lon)
   }
 
+  const applyDateTime = () => {
+    setDateLocal(dateInput)
+    setTimeLocal(timeInput)
+  }
+
+  const applyAll = () => {
+    applyDateTime()
+    applyLocationDraft()
+    setShowUpdatedFeedback(true)
+  }
+
+  useEffect(() => {
+    if (!showUpdatedFeedback) return
+    const t = setTimeout(() => setShowUpdatedFeedback(false), 1500)
+    return () => clearTimeout(t)
+  }, [showUpdatedFeedback])
+
+  const handleApplyKeyDown: KeyboardEventHandler<HTMLInputElement | HTMLSelectElement> = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      applyAll()
+    }
+  }
+
+  useEffect(() => {
+    if (locationMode === 'geolocation') {
+      handleUseMyLocation()
+    }
+  }, [])
+
   const parsed = useMemo(() => {
-    const dt = new Date(dateTimeLocal)
+    const dt = new Date(`${dateLocal}T${timeLocal}`)
     const latDec = dmToDecimal(Number(latDeg) || 0, Number(latMin) || 0, latSign)
     const lonDec = dmToDecimal(Number(lonDeg) || 0, Number(lonMin) || 0, lonSign)
     return { dt, lat: latDec, lon: lonDec }
-  }, [dateTimeLocal, latDeg, latMin, latSign, lonDeg, lonMin, lonSign])
+  }, [dateLocal, timeLocal, latDeg, latMin, latSign, lonDeg, lonMin, lonSign])
 
   const chart = useMemo<{ summary?: ChartSummary; error?: string }>(() => {
     const { dt, lat, lon } = parsed
@@ -254,31 +344,32 @@ function App() {
         // AstroChart keys are capitalized: Sun, Moon, Mercury...
         astroPlanets[p.name] = [p.eclipticDegrees]
       }
-      // Mark Midheaven (Mc) and IC on the wheel as additional points (but we will exclude them from aspect calc)
-      const mcDeg = mc.ChartPosition?.Ecliptic?.DecimalDegrees ?? 0
-      const icDeg = (mcDeg + 180) % 360
-      astroPlanets.Mc = [mcDeg]
-      astroPlanets.Ic = [icDeg]
       const cusps = houses.map((h) => h.eclipticDegrees).filter((x) => Number.isFinite(x)) as number[]
 
-      // Calculate aspects between planets only (no MC/IC) for both drawing and listing
-      const aspectPoints: Record<string, [number]> = {}
-      for (const [name, coords] of Object.entries(astroPlanets)) {
-        if (name === 'Mc' || name === 'Ic') continue
-        aspectPoints[name] = coords
-      }
+      const aspectPoints = { ...astroPlanets }
       const aspectCalc = new AspectCalculator(aspectPoints, { ASPECTS: WHEEL_ASPECTS } as any)
       const astroAspects: any[] = aspectCalc.radix(aspectPoints)
-      const aspectsList = astroAspects.map((a) => {
-        const precNum = typeof a.precision === 'number' ? a.precision : parseFloat(String(a.precision ?? 0))
-        const orbStr = Number.isFinite(precNum) ? formatDegArcMin(precNum) : String(a.precision ?? '')
-        return {
-          from: a.point?.name ?? '',
-          to: a.toPoint?.name ?? '',
-          type: a.aspect?.name ?? '',
-          orb: orbStr,
-        }
-      })
+      const seen = new Set<string>()
+      const aspectsList = astroAspects
+        .map((a) => {
+          const precNum = typeof a.precision === 'number' ? a.precision : parseFloat(String(a.precision ?? 0))
+          const orbStr = Number.isFinite(precNum) ? formatDegArcMin(precNum) : String(a.precision ?? '')
+          return {
+            from: a.point?.name ?? '',
+            to: a.toPoint?.name ?? '',
+            type: a.aspect?.name ?? '',
+            orb: orbStr,
+          }
+        })
+        .filter((a) => {
+          const key = [a.from, a.to].sort().join('|') + '|' + a.type
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+
+      const house4 = houses[3]
+      const house7 = houses[6]
 
       const summary: ChartSummary = {
         ascendant: `${asc.Sign?.label ?? asc.Sign?.key ?? ''} ${
@@ -291,10 +382,14 @@ function App() {
         }`,
         midheavenSign: mc.Sign?.label ?? mc.Sign?.key ?? '',
         midheavenDeg: mc.ChartPosition?.Ecliptic?.DecimalDegrees ?? 0,
+        descendantSign: house7?.sign ?? '',
+        descendantDeg: house7?.eclipticDegrees ?? 0,
+        imumCoeliSign: house4?.sign ?? '',
+        imumCoeliDeg: house4?.eclipticDegrees ?? 0,
         houses,
         planets,
         time: {
-          timezone: String((origin as any).timezone ?? ''),
+          timezone: formatTimezoneLabel(origin),
           local: String((origin as any).localTimeFormatted ?? ''),
           utc: String((origin as any).utcTimeFormatted ?? ''),
         },
@@ -315,28 +410,52 @@ function App() {
         In-browser chart math via <code>circular-natal-horoscope-js</code>. House system: <b>Regiomontanus</b>.
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'end' }}>
-        <label>
-          Date/time (local)
-          <input
-            type="datetime-local"
-            value={dateTimeLocal}
-            onChange={(e) => setDateTimeLocal(e.target.value)}
-            style={{ width: '100%' }}
-          />
-        </label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <label>
+            Date (local)
+            <input
+              type="date"
+              value={dateInput}
+              onChange={(e) => setDateInput(e.target.value)}
+              onKeyDown={handleApplyKeyDown}
+              style={{ width: '100%' }}
+            />
+          </label>
+          <label>
+            Time (local)
+            <input
+              type="time"
+              value={timeInput}
+              onChange={(e) => setTimeInput(e.target.value)}
+              onKeyDown={handleApplyKeyDown}
+              style={{ width: '100%' }}
+            />
+          </label>
+        </div>
+        <div>
           <label>
             Location
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <select
                 value={locationMode}
-                onChange={(e) => setLocationMode(e.target.value as 'manual' | 'city' | 'geolocation')}
+                onChange={(e) => {
+                  const m = e.target.value as 'manual' | 'city' | 'geolocation'
+                  setLocationMode(m)
+                  if (m === 'manual') {
+                    setLatDegDraft(latDeg)
+                    setLatMinDraft(latMin)
+                    setLatSignDraft(latSign)
+                    setLonDegDraft(lonDeg)
+                    setLonMinDraft(lonMin)
+                    setLonSignDraft(lonSign)
+                  }
+                }}
                 style={{ width: '100%' }}
               >
-                <option value="manual">Enter coordinates (° and ′)</option>
-                <option value="city">Nearest city</option>
                 <option value="geolocation">Use my location</option>
+                <option value="city">Nearest city</option>
+                <option value="manual">Enter coordinates (° and ′)</option>
               </select>
               {locationMode === 'manual' && (
                 <>
@@ -346,8 +465,9 @@ function App() {
                       type="number"
                       min={0}
                       max={90}
-                      value={latDeg}
-                      onChange={(e) => setLatDeg(e.target.value)}
+                      value={latDegDraft}
+                      onChange={(e) => setLatDegDraft(e.target.value)}
+                      onKeyDown={handleApplyKeyDown}
                       placeholder="°"
                       style={{ width: 56 }}
                       title="Degrees"
@@ -357,16 +477,18 @@ function App() {
                       type="number"
                       min={0}
                       max={59}
-                      value={latMin}
-                      onChange={(e) => setLatMin(e.target.value)}
+                      value={latMinDraft}
+                      onChange={(e) => setLatMinDraft(e.target.value)}
+                      onKeyDown={handleApplyKeyDown}
                       placeholder="′"
                       style={{ width: 56 }}
                       title="Minutes"
                     />
                     <span>′</span>
                     <select
-                      value={latSign}
-                      onChange={(e) => setLatSign(e.target.value as 'N' | 'S')}
+                      value={latSignDraft}
+                      onChange={(e) => setLatSignDraft(e.target.value as 'N' | 'S')}
+                      onKeyDown={handleApplyKeyDown}
                       style={{ marginLeft: 4 }}
                     >
                       <option value="N">N</option>
@@ -379,8 +501,9 @@ function App() {
                       type="number"
                       min={0}
                       max={180}
-                      value={lonDeg}
-                      onChange={(e) => setLonDeg(e.target.value)}
+                      value={lonDegDraft}
+                      onChange={(e) => setLonDegDraft(e.target.value)}
+                      onKeyDown={handleApplyKeyDown}
                       placeholder="°"
                       style={{ width: 56 }}
                       title="Degrees"
@@ -390,16 +513,18 @@ function App() {
                       type="number"
                       min={0}
                       max={59}
-                      value={lonMin}
-                      onChange={(e) => setLonMin(e.target.value)}
+                      value={lonMinDraft}
+                      onChange={(e) => setLonMinDraft(e.target.value)}
+                      onKeyDown={handleApplyKeyDown}
                       placeholder="′"
                       style={{ width: 56 }}
                       title="Minutes"
                     />
                     <span>′</span>
                     <select
-                      value={lonSign}
-                      onChange={(e) => setLonSign(e.target.value as 'E' | 'W')}
+                      value={lonSignDraft}
+                      onChange={(e) => setLonSignDraft(e.target.value as 'E' | 'W')}
+                      onKeyDown={handleApplyKeyDown}
                       style={{ marginLeft: 4 }}
                     >
                       <option value="E">E</option>
@@ -437,6 +562,19 @@ function App() {
         </div>
       </div>
 
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
+        <button
+          type="button"
+          onClick={applyAll}
+          style={{ padding: '8px 16px' }}
+        >
+          Enter
+        </button>
+        {showUpdatedFeedback && (
+          <span style={{ fontSize: 14, opacity: 0.9 }}>Chart updated</span>
+        )}
+      </div>
+
       {chart.summary ? (
         <div style={{ marginTop: 16, padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8 }}>
           <h2 style={{ marginTop: 0 }}>Chart wheel</h2>
@@ -454,7 +592,11 @@ function App() {
             <div style={{ padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8 }}>
               <h2 style={{ marginTop: 0 }}>Angles</h2>
               <div style={{ opacity: 0.85, marginBottom: 8 }}>
-                <b>Timezone:</b> {chart.summary.time.timezone || '(unknown)'} <br />
+                {chart.summary.time.timezone ? (
+                  <>
+                    <b>Timezone:</b> {chart.summary.time.timezone} <br />
+                  </>
+                ) : null}
                 <b>Local:</b> {chart.summary.time.local || '(unknown)'} <br />
                 <b>UTC:</b> {chart.summary.time.utc || '(unknown)'}
               </div>
@@ -463,6 +605,12 @@ function App() {
               </div>
               <div>
                 <b>MC:</b> {chart.summary.midheavenSign} {formatDeg(degreesWithinSign(chart.summary.midheavenDeg))}
+              </div>
+              <div>
+                <b>DSC:</b> {chart.summary.descendantSign} {formatDeg(degreesWithinSign(chart.summary.descendantDeg))}
+              </div>
+              <div>
+                <b>IC:</b> {chart.summary.imumCoeliSign} {formatDeg(degreesWithinSign(chart.summary.imumCoeliDeg))}
               </div>
 
               <h2>Houses</h2>
@@ -514,8 +662,9 @@ function ChartWheel({ data }: { data: { planets: Record<string, [number]>; cusps
     if (el) el.innerHTML = ''
     try {
       const chart = new AstroChart(containerId, 520, 520, {
-        SYMBOL_SCALE: 0.72,
-        POINTS_TEXT_SIZE: 7,
+        SYMBOL_SCALE: 0.6,
+        // Labels next to planets (degrees/minutes); separate from glyph size (SYMBOL_SCALE).
+        POINTS_TEXT_SIZE: 11,
         SYMBOL_AXIS_STROKE: 2.2,
         SHOW_DIGNITIES_TEXT: false,
         ASPECTS: WHEEL_ASPECTS,
@@ -538,6 +687,9 @@ function ChartWheel({ data }: { data: { planets: Record<string, [number]>; cusps
           }
           if (next && next.tagName.toLowerCase() === 'text') {
             next.textContent = formatDegArcMinCompact(degreesWithinSign(eclipticDeg))
+            // Move label from above symbol to below
+            const y = parseFloat(next.getAttribute('y') ?? '0')
+            next.setAttribute('y', String(y + 18))
           }
         })
       }
