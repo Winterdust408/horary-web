@@ -45,19 +45,6 @@ function dmsToDecimal(
   return abs
 }
 
-/** Convert decimal degrees to DMS components (absolute values) and direction. */
-function decimalToDMS(
-  decimal: number,
-  isLat: boolean,
-): { deg: number; min: number; sec: number; sign: 'N' | 'S' | 'E' | 'W' } {
-  const abs = Math.abs(decimal)
-  const d = Math.floor(abs)
-  const mFrac = (abs - d) * 60
-  const m = Math.floor(mFrac)
-  const s = Math.round((mFrac - m) * 60)
-  if (isLat) return { deg: d, min: m, sec: s, sign: decimal >= 0 ? 'N' : 'S' }
-  return { deg: d, min: m, sec: s, sign: decimal >= 0 ? 'E' : 'W' }
-}
 
 function dtLocalNowValue() {
   const now = new Date()
@@ -174,7 +161,7 @@ function App() {
       const icDeg = (mcDeg + 180) % 360
       astroPlanets.Mc = [mcDeg]
       astroPlanets.Ic = [icDeg]
-      const cusps = houses.map((h) => h.eclipticDegrees).filter((x) => Number.isFinite(x)) as number[]
+      const cusps = houses.map((h: { eclipticDegrees: number }) => h.eclipticDegrees).filter((x: number) => Number.isFinite(x)) as number[]
 
       // Calculate aspects between planets only (no MC/IC) for both drawing and listing
       const aspectPoints: Record<string, [number]> = {}
