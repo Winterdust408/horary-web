@@ -2,12 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/horary-web/icon-192.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>horary-web</title>
+    <meta name="theme-color" content="#1a1a2e" />
+    <meta name="description" content="In-browser horary astrology chart calculator" />
+    <link rel="manifest" href="/horary-web/manifest.json" />
+    <title>Horary Calculator</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/horary-web/sw.js')
+        })
+      }
+    </script>
   </body>
 </html>
