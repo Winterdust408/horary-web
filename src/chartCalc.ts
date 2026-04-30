@@ -158,7 +158,7 @@ export function calculateChart(dt: Date, lat: number, lon: number): { summary?: 
       houses,
       planets,
       time: {
-        timezone: String((origin as any).timezone ?? ''),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         local: String((origin as any).localTimeFormatted ?? ''),
         utc: String((origin as any).utcTimeFormatted ?? ''),
       },
