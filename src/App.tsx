@@ -15,6 +15,7 @@ function App() {
   const [lonMin, setLonMin] = useState('7')
   const [lonSec, setLonSec] = useState('40')
   const [lonSign, setLonSign] = useState<'E' | 'W'>('W')
+  const [question, setQuestion] = useState('')
 
   const parsed = useMemo(() => {
     const dt = new Date(dateTimeLocal)
@@ -38,6 +39,16 @@ function App() {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 24, textAlign: 'left' }}>
       <h1 style={{ marginBottom: 8 }}>Horary Calculator</h1>
+      <label style={{ display: 'block', marginBottom: 16 }}>
+        Question
+        <input
+          type="text"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="What is your question?"
+          style={{ display: 'block', width: '100%', marginTop: 4, boxSizing: 'border-box' }}
+        />
+      </label>
       <p style={{ marginTop: 0, opacity: 0.8 }}>
         In-browser chart math via <code>circular-natal-horoscope-js</code>. House system: <b>Regiomontanus</b>.
       </p>
@@ -165,9 +176,9 @@ function App() {
             <div style={{ padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8 }}>
               <h2 style={{ marginTop: 0 }}>Angles</h2>
               <div style={{ opacity: 0.85, marginBottom: 8 }}>
-                <b>Timezone:</b> {chart.summary.time.timezone || '(unknown)'} <br />
-                <b>Local:</b> {chart.summary.time.local || '(unknown)'} <br />
-                <b>UTC:</b> {chart.summary.time.utc || '(unknown)'}
+                <b>Date:</b> {parsed.dt.toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' })} <br />
+                <b>Time:</b> {parsed.dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} <br />
+                <b>Timezone:</b> {chart.summary.time.timezone || '(unknown)'}
               </div>
               <div>
                 <b>ASC:</b> {chart.summary.ascendant}
