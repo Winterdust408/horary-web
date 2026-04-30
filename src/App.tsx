@@ -196,18 +196,15 @@ function App() {
                 ))}
               </ul>
 
-              <h2 style={{ marginTop: 16 }}>Aspects (planet–planet)</h2>
+              <h2 style={{ marginTop: 16 }}>Aspects</h2>
               <ul style={{ marginTop: 8 }}>
                 {chart.summary.aspectsList.length === 0 && <li>No aspects found with default orbs.</li>}
                 {chart.summary.aspectsList.map((a, idx) => (
                   <li key={`${a.from}-${a.to}-${idx}`}>
-                    <b>{a.from}</b> {a.type} <b>{a.to}</b> ({a.orb} from perfect)
+                    <b>{a.from}</b> {a.type} <b>{a.to}</b> {a.orb}
                   </li>
                 ))}
               </ul>
-              <p style={{ opacity: 0.75 }}>
-                The chart wheel above shows the same planet–planet aspects from the chart center.
-              </p>
             </div>
           </div>
         ) : null}

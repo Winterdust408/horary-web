@@ -137,15 +137,17 @@ export function calculateChart(dt: Date, lat: number, lon: number): { summary?: 
     }
     const aspectCalc = new AspectCalculator(aspectPoints)
     const astroAspects: any[] = aspectCalc.radix(aspectPoints)
-    const aspectsList = astroAspects.map((a) => {
+    const seenAspects = new Set<string>()
+    const aspectsList = astroAspects.flatMap((a) => {
+      const from = a.point?.name ?? ''
+      const to = a.toPoint?.name ?? ''
+      const type = a.aspect?.name ?? ''
+      const key = [from, to].sort().join('|') + '|' + type
+      if (seenAspects.has(key)) return []
+      seenAspects.add(key)
       const precNum = typeof a.precision === 'number' ? a.precision : parseFloat(String(a.precision ?? 0))
       const orbStr = Number.isFinite(precNum) ? formatDegArcMin(precNum) : String(a.precision ?? '')
-      return {
-        from: a.point?.name ?? '',
-        to: a.toPoint?.name ?? '',
-        type: a.aspect?.name ?? '',
-        orb: orbStr,
-      }
+      return [{ from, to, type, orb: orbStr }]
     })
 
     const summary: ChartSummary = {
