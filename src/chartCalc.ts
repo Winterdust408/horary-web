@@ -43,6 +43,10 @@ export function dmsToDecimal(
   return abs
 }
 
+function roundToArcMinute(deg: number): number {
+  return Math.round(deg * 60) / 60
+}
+
 export function dtLocalNowValue() {
   const now = new Date()
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}T${pad2(
@@ -158,7 +162,13 @@ export function calculateChart(dt: Date, lat: number, lon: number): { summary?: 
         local: String((origin as any).localTimeFormatted ?? ''),
         utc: String((origin as any).utcTimeFormatted ?? ''),
       },
-      astroChartData: { planets: astroPlanets, cusps, aspects: astroAspects },
+      astroChartData: {
+        planets: Object.fromEntries(
+          Object.entries(astroPlanets).map(([k, v]) => [k, [roundToArcMinute(v[0])] as [number]])
+        ),
+        cusps: cusps.map(roundToArcMinute),
+        aspects: astroAspects,
+      },
       aspectsList,
     }
 
