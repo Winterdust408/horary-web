@@ -184,7 +184,13 @@ function App() {
                 <b>ASC:</b> {chart.summary.ascendant}
               </div>
               <div>
+                <b>DSC:</b> {chart.summary.descendant}
+              </div>
+              <div>
                 <b>MC:</b> {chart.summary.midheaven}
+              </div>
+              <div>
+                <b>IC:</b> {chart.summary.ic}
               </div>
 
               <h2>Houses</h2>

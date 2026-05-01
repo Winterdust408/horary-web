@@ -3,7 +3,9 @@ import { AspectCalculator } from '@astrodraw/astrochart'
 
 export type ChartSummary = {
   ascendant: string
+  descendant: string
   midheaven: string
+  ic: string
   time: { timezone: string; local: string; utc: string }
   houses: Array<{ house: number; eclipticDegrees: number; sign: string; formatted: string }>
   planets: Array<{ key: string; name: string; eclipticDegrees: number; sign: string; formatted: string }>
@@ -154,9 +156,11 @@ export function calculateChart(dt: Date, lat: number, lon: number): { summary?: 
       ascendant: `${asc.Sign?.label ?? asc.Sign?.key ?? ''} ${
         asc.ChartPosition?.Ecliptic?.ArcDegreesFormatted30 ?? formatDeg(asc.ChartPosition?.Ecliptic?.DecimalDegrees ?? 0)
       }`,
+      descendant: houses[6] ? `${houses[6].sign} ${houses[6].formatted || formatDeg(houses[6].eclipticDegrees)}` : '',
       midheaven: `${mc.Sign?.label ?? mc.Sign?.key ?? ''} ${
         mc.ChartPosition?.Ecliptic?.ArcDegreesFormatted30 ?? formatDeg(mc.ChartPosition?.Ecliptic?.DecimalDegrees ?? 0)
       }`,
+      ic: houses[3] ? `${houses[3].sign} ${houses[3].formatted || formatDeg(houses[3].eclipticDegrees)}` : '',
       houses,
       planets,
       time: {
