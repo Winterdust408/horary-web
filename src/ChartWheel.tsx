@@ -8,7 +8,14 @@ export function ChartWheel({ data }: { data: { planets: Record<string, [number]>
     const el = document.getElementById(containerId)
     if (el) el.innerHTML = ''
     try {
-      const chart = new AstroChart(containerId, 520, 520)
+      const chart = new AstroChart(containerId, 520, 520, {
+        ASPECTS: {
+          conjunction: { degree: 0, orbit: 10, color: 'transparent' },
+          square: { degree: 90, orbit: 8, color: '#FF4500' },
+          trine: { degree: 120, orbit: 8, color: '#27AE60' },
+          opposition: { degree: 180, orbit: 10, color: '#FF0000' },
+        },
+      } as any)
       const radix = chart.radix({ planets: data.planets, cusps: data.cusps })
       radix.aspects(data.aspects)
     } catch (e) {

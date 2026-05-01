@@ -126,18 +126,17 @@ export function calculateChart(dt: Date, lat: number, lon: number): { summary?: 
     for (const p of planets) {
       astroPlanets[p.name] = [p.eclipticDegrees]
     }
-    const mcDeg = mc.ChartPosition?.Ecliptic?.DecimalDegrees ?? 0
-    const icDeg = (mcDeg + 180) % 360
-    astroPlanets.Mc = [mcDeg]
-    astroPlanets.Ic = [icDeg]
     const cusps = houses.map((h: { eclipticDegrees: number }) => h.eclipticDegrees).filter((x: number) => Number.isFinite(x)) as number[]
 
-    const aspectPoints: Record<string, [number]> = {}
-    for (const [name, coords] of Object.entries(astroPlanets)) {
-      if (name === 'Mc' || name === 'Ic') continue
-      aspectPoints[name] = coords
-    }
-    const aspectCalc = new AspectCalculator(aspectPoints)
+    const aspectPoints: Record<string, [number]> = { ...astroPlanets }
+    const aspectCalc = new AspectCalculator(aspectPoints, {
+      ASPECTS: {
+        conjunction: { degree: 0, orbit: 10, color: 'transparent' },
+        square: { degree: 90, orbit: 8, color: '#FF4500' },
+        trine: { degree: 120, orbit: 8, color: '#27AE60' },
+        opposition: { degree: 180, orbit: 10, color: '#FF0000' },
+      },
+    } as any)
     const astroAspects: any[] = aspectCalc.radix(aspectPoints)
     const seenAspects = new Set<string>()
     const aspectsList = astroAspects.flatMap((a) => {

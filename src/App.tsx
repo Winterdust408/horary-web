@@ -219,10 +219,12 @@ function App() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div style={{ padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8 }}>
               <h2 style={{ marginTop: 0 }}>Angles</h2>
-              <div><b>ASC:</b> {chart.summary.ascendant}</div>
-              <div><b>DSC:</b> {chart.summary.descendant}</div>
-              <div><b>MC:</b> {chart.summary.midheaven}</div>
-              <div><b>IC:</b> {chart.summary.ic}</div>
+              <ul style={{ marginTop: 8 }}>
+                <li><b>ASC:</b> {chart.summary.ascendant}</li>
+                <li><b>DSC:</b> {chart.summary.descendant}</li>
+                <li><b>MC:</b> {chart.summary.midheaven}</li>
+                <li><b>IC:</b> {chart.summary.ic}</li>
+              </ul>
 
               <h2>Houses</h2>
               <ol style={{ marginTop: 8 }}>
