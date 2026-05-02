@@ -127,20 +127,21 @@ function App() {
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
             {use24Hour ? (
               <>
-                <input type="number" min={0} max={23} value={timeHour} onChange={(e) => setTimeHour(e.target.value)} style={{ width: 56 }} title="Hour" />
-                <span>h</span>
+                <input type="number" min={0} max={23} value={timeHour} onChange={(e) => setTimeHour(e.target.value)} style={{ width: '4ch' }} title="Hour" />
+                <span>:</span>
+                <input type="number" min={0} max={59} value={timeMinute} onChange={(e) => setTimeMinute(e.target.value)} style={{ width: '4ch' }} title="Minute" />
               </>
             ) : (
               <>
-                <input type="number" min={1} max={12} value={display12Hour} onChange={(e) => handleHour12Change(e.target.value)} style={{ width: 56 }} title="Hour" />
+                <input type="number" min={1} max={12} value={display12Hour} onChange={(e) => handleHour12Change(e.target.value)} style={{ width: '4ch' }} title="Hour" />
+                <span>:</span>
+                <input type="number" min={0} max={59} value={timeMinute} onChange={(e) => setTimeMinute(e.target.value)} style={{ width: '4ch' }} title="Minute" />
                 <select value={amPm} onChange={(e) => handleAmPmChange(e.target.value as 'AM' | 'PM')}>
                   <option value="AM">AM</option>
                   <option value="PM">PM</option>
                 </select>
               </>
             )}
-            <input type="number" min={0} max={59} value={timeMinute} onChange={(e) => setTimeMinute(e.target.value)} style={{ width: 56 }} title="Minute" />
-            <span>m</span>
             <label style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 8, fontSize: '0.9em' }}>
               <input type="checkbox" checked={use24Hour} onChange={(e) => setUse24Hour(e.target.checked)} />
               24h
