@@ -31,19 +31,22 @@ export function AspectGrid({ planets, aspects }: { planets: string[]; aspects: A
         <thead>
           <tr>
             <th />
-            {planets.slice(0, -1).map(p => (
-              <th key={p} style={{ padding: '4px 6px', opacity: 0.7, fontWeight: 'normal' }}>{p}</th>
+            {planets.map(p => (
+              <th key={p} style={{ padding: '4px 2px', opacity: 0.7, fontWeight: 'normal', border: '1px solid #666', textAlign: 'center' }}>{p}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {planets.slice(1).map((row, rowIdx) => (
+          {planets.map((row, rowIdx) => (
             <tr key={row}>
-              <td style={{ padding: '4px 6px', opacity: 0.7 }}>{row}</td>
-              {planets.slice(0, rowIdx + 1).map(col => {
+              <td style={{ padding: '4px 2px', opacity: 0.7, border: '1px solid #666' }}>{row}</td>
+              {planets.map((col, colIdx) => {
+                if (colIdx === rowIdx) {
+                  return <td key={col} style={{ padding: '4px 2px', border: '1px solid #666', minWidth: 32 }} />
+                }
                 const asp = aspectMap.get(`${row}|${col}`)
                 return (
-                  <td key={col} style={{ padding: '4px 6px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.1)', minWidth: 32 }}>
+                  <td key={col} style={{ padding: '4px 2px', textAlign: 'center', border: '1px solid #666', minWidth: 32 }}>
                     {asp ? (
                       <span
                         title={`${asp.type} ${asp.orb} — ${asp.applying == null ? '' : asp.applying ? 'applying' : 'separating'}`}
@@ -55,9 +58,6 @@ export function AspectGrid({ planets, aspects }: { planets: string[]; aspects: A
                   </td>
                 )
               })}
-              {planets.slice(rowIdx + 1, -1).map(col => (
-                <td key={col} style={{ padding: '4px 6px', border: '1px solid rgba(255,255,255,0.1)', minWidth: 32 }} />
-              ))}
             </tr>
           ))}
         </tbody>

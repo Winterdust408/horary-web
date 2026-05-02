@@ -50,6 +50,7 @@ function App() {
   const [showHouses, setShowHouses] = useState(true)
   const [showPlanets, setShowPlanets] = useState(true)
   const [showAspects, setShowAspects] = useState(true)
+  const [showAspectGrid, setShowAspectGrid] = useState(true)
   const [locationInputMode, setLocationInputMode] = useState<'search' | 'coordinates'>('search')
   const settingsRef = useRef<HTMLDivElement>(null)
 
@@ -269,7 +270,7 @@ function App() {
                 Use 24-hour time
               </label>
               <hr style={{ border: 'none', borderTop: '1px solid #ddd', margin: '8px 0' }} />
-              {[['showAngles', 'Show angles', showAngles, setShowAngles], ['showHouses', 'Show houses', showHouses, setShowHouses], ['showPlanets', 'Show planets', showPlanets, setShowPlanets], ['showAspects', 'Show aspects', showAspects, setShowAspects]].map(([key, label, value, setter]) => (
+              {[['showAngles', 'Show angles', showAngles, setShowAngles], ['showHouses', 'Show houses', showHouses, setShowHouses], ['showPlanets', 'Show planets', showPlanets, setShowPlanets], ['showAspects', 'Show aspects list', showAspects, setShowAspects], ['showAspectGrid', 'Show aspects chart', showAspectGrid, setShowAspectGrid]].map(([key, label, value, setter]) => (
                 <label key={key as string} style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', marginBottom: 4 }}>
                   <input type="checkbox" checked={value as boolean} onChange={(e) => (setter as (v: boolean) => void)(e.target.checked)} />
                   {label as string}
@@ -301,12 +302,13 @@ function App() {
 
       <label style={{ display: 'block', marginBottom: 16 }}>
         Question
-        <input
-          type="text"
+        <textarea
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
+          onInput={(e) => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
           placeholder="What is your question?"
-          style={{ display: 'block', width: '100%', marginTop: 4, boxSizing: 'border-box' }}
+          rows={1}
+          style={{ display: 'block', width: '100%', marginTop: 4, boxSizing: 'border-box', resize: 'none', overflow: 'hidden', fontFamily: 'inherit', fontSize: 'inherit' }}
         />
       </label>
 
@@ -353,10 +355,12 @@ function App() {
       )}
 
       {chart.summary ? (
-        <div style={{ marginTop: 16, padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8 }}>
-          <h2 style={{ marginTop: 0 }}>Chart wheel</h2>
-          <ChartWheel data={chart.summary.astroChartData} />
-        </div>
+        <>
+          <div style={{ marginTop: 16, padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8 }}>
+            <h2 style={{ marginTop: 0 }}>Chart wheel</h2>
+            <ChartWheel data={chart.summary.astroChartData} />
+          </div>
+        </>
       ) : null}
 
       <div style={{ marginTop: 16 }}>
@@ -365,9 +369,10 @@ function App() {
             <b>Error:</b> {chart.error}
           </div>
         ) : chart.summary ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
             {(showAngles || showHouses) && (
-              <div style={{ padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8 }}>
+              <div style={{ padding: '12px 6px 12px 12px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, minWidth: 0 }}>
                 {showAngles && (
                   <>
                     <h2 style={{ marginTop: 0 }}>Angles</h2>
@@ -395,7 +400,7 @@ function App() {
             )}
 
             {(showPlanets || showAspects) && (
-              <div style={{ padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8 }}>
+              <div style={{ padding: '12px 12px 12px 6px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, minWidth: 0 }}>
                 {showPlanets && (
                   <>
                     <h2 style={{ marginTop: 0 }}>Planets</h2>
@@ -419,15 +424,21 @@ function App() {
                         </li>
                       ))}
                     </ul>
-                    <AspectGrid
-                      planets={chart.summary.planets.map(p => p.name)}
-                      aspects={chart.summary.aspectsList}
-                    />
                   </>
                 )}
               </div>
             )}
           </div>
+          {showAspectGrid && (
+            <div style={{ marginTop: 16, padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, overflow: 'hidden' }}>
+              <h2 style={{ marginTop: 0 }}>Aspects chart</h2>
+              <AspectGrid
+                planets={chart.summary.planets.map(p => p.name)}
+                aspects={chart.summary.aspectsList}
+              />
+            </div>
+          )}
+          </>
         ) : null}
       </div>
     </div>

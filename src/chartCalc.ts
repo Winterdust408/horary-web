@@ -10,7 +10,7 @@ export type ChartSummary = {
   houses: Array<{ house: number; eclipticDegrees: number; sign: string; formatted: string }>
   planets: Array<{ key: string; name: string; eclipticDegrees: number; sign: string; formatted: string }>
   astroChartData: { planets: Record<string, [number]>; cusps: number[]; aspects: any[] }
-  aspectsList: Array<{ from: string; to: string; type: string; orb: string }>
+  aspectsList: Array<{ from: string; to: string; type: string; orb: string; applying: boolean | null }>
 }
 
 export function pad2(n: number) {
@@ -43,6 +43,19 @@ export function dmsToDecimal(
   const abs = deg + min / 60 + sec / 3600
   if (sign === 'S' || sign === 'W') return -abs
   return abs
+}
+
+function calcOrb(pos1: number, pos2: number, aspectDeg: number): number {
+  const diff = ((pos1 - pos2) % 360 + 360) % 360
+  return Math.min(Math.abs(diff - aspectDeg), Math.abs(diff - aspectDeg + 360), Math.abs(diff - aspectDeg - 360))
+}
+
+function isApplying(pos1: number, speed1: number, pos2: number, speed2: number, aspectDeg: number): boolean {
+  const dailySpeed1 = speed1 * 86400
+  const dailySpeed2 = speed2 * 86400
+  const currentOrb = calcOrb(pos1, pos2, aspectDeg)
+  const futureOrb = calcOrb(pos1 + dailySpeed1, pos2 + dailySpeed2, aspectDeg)
+  return futureOrb < currentOrb
 }
 
 function roundToArcMinute(deg: number): number {
@@ -107,11 +120,13 @@ export function calculateChart(dt: Date, lat: number, lon: number): { summary?: 
       ['pluto', 'Pluto'],
     ]
 
+    const planetSpeeds: Record<string, number> = {}
     const planets = bodyKeys
       .map(([key, name]) => {
         const b: any = (horoscope.CelestialBodies as any)[key]
         if (!b) return undefined
         const ecliptic = b.ChartPosition?.Ecliptic?.DecimalDegrees
+        planetSpeeds[name] = b.motion?.oneSecondMotionAmount ?? 0
         return {
           key,
           name,
@@ -148,7 +163,15 @@ export function calculateChart(dt: Date, lat: number, lon: number): { summary?: 
       seenAspects.add(key)
       const precNum = typeof a.precision === 'number' ? a.precision : parseFloat(String(a.precision ?? 0))
       const orbStr = Number.isFinite(precNum) ? formatDegArcMin(precNum) : String(a.precision ?? '')
-      return [{ from, to, type, orb: orbStr }]
+      const fromPos = astroPlanets[from]?.[0]
+      const toPos = astroPlanets[to]?.[0]
+      const fromSpeed = planetSpeeds[from]
+      const toSpeed = planetSpeeds[to]
+      const aspectDeg = a.aspect?.degree ?? 0
+      const applying = (fromPos != null && toPos != null && fromSpeed != null && toSpeed != null)
+        ? isApplying(fromPos, fromSpeed, toPos, toSpeed, aspectDeg)
+        : null
+      return [{ from, to, type, orb: orbStr, applying }]
     })
 
     const summary: ChartSummary = {
