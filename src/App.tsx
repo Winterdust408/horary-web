@@ -188,7 +188,7 @@ function App() {
       <div style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: '0.9em' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
           <input type="radio" name="locationInputMode" value="search" checked={locationInputMode === 'search'} onChange={() => setLocationInputMode('search')} />
-          Search by name
+          Search by city
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
           <input type="radio" name="locationInputMode" value="coordinates" checked={locationInputMode === 'coordinates'} onChange={() => setLocationInputMode('coordinates')} />
@@ -259,12 +259,12 @@ function App() {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 24, textAlign: 'left' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', position: 'relative', zIndex: 200 }}>
         <h1 style={{ marginBottom: 4 }}>Horary Calculator</h1>
         <div style={{ position: 'relative' }} ref={settingsRef}>
           <button onClick={() => setShowSettings(s => !s)} style={{ fontSize: '1.2em', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.7 }} title="Settings">⚙</button>
           {showSettings && (
-            <div style={{ position: 'absolute', right: 0, top: '100%', background: '#ffffff', color: '#000000', border: '1px solid #ccc', borderRadius: 8, padding: 12, minWidth: 220, zIndex: 100 }}>
+            <div style={{ position: 'absolute', right: 0, top: '100%', background: '#ffffff', color: '#000000', border: '1px solid #ccc', borderRadius: 8, padding: 12, minWidth: 220, zIndex: 9999 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                 <input type="checkbox" checked={use24Hour} onChange={(e) => setUse24Hour(e.target.checked)} />
                 Use 24-hour time
