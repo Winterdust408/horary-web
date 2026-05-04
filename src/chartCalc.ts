@@ -9,7 +9,7 @@ export type ChartSummary = {
   time: { timezone: string; local: string; utc: string }
   houses: Array<{ house: number; eclipticDegrees: number; sign: string; formatted: string }>
   planets: Array<{ key: string; name: string; eclipticDegrees: number; sign: string; formatted: string }>
-  astroChartData: { planets: Record<string, [number]>; cusps: number[]; aspects: any[] }
+  astroChartData: { planets: Record<string, number[]>; cusps: number[]; aspects: any[] }
   aspectsList: Array<{ from: string; to: string; type: string; orb: string; applying: boolean | null }>
 }
 
@@ -121,12 +121,14 @@ export function calculateChart(dt: Date, lat: number, lon: number): { summary?: 
     ]
 
     const planetSpeeds: Record<string, number> = {}
+    const planetRetrograde: Record<string, boolean> = {}
     const planets = bodyKeys
       .map(([key, name]) => {
         const b: any = (horoscope.CelestialBodies as any)[key]
         if (!b) return undefined
         const ecliptic = b.ChartPosition?.Ecliptic?.DecimalDegrees
         planetSpeeds[name] = b.motion?.oneSecondMotionAmount ?? 0
+        planetRetrograde[name] = b.isRetrograde ?? false
         return {
           key,
           name,
@@ -137,13 +139,13 @@ export function calculateChart(dt: Date, lat: number, lon: number): { summary?: 
       })
       .filter(Boolean) as ChartSummary['planets']
 
-    const astroPlanets: Record<string, [number]> = {}
+    const astroPlanets: Record<string, number[]> = {}
     for (const p of planets) {
-      astroPlanets[p.name] = [p.eclipticDegrees]
+      astroPlanets[p.name] = [p.eclipticDegrees, planetRetrograde[p.name] ? -1 : 1]
     }
     const cusps = houses.map((h: { eclipticDegrees: number }) => h.eclipticDegrees).filter((x: number) => Number.isFinite(x)) as number[]
 
-    const aspectPoints: Record<string, [number]> = { ...astroPlanets }
+    const aspectPoints: Record<string, number[]> = { ...astroPlanets }
     const aspectCalc = new AspectCalculator(aspectPoints, {
       ASPECTS: {
         conjunction: { degree: 0, orbit: 10, color: 'transparent' },
@@ -192,7 +194,7 @@ export function calculateChart(dt: Date, lat: number, lon: number): { summary?: 
       },
       astroChartData: {
         planets: Object.fromEntries(
-          Object.entries(astroPlanets).map(([k, v]) => [k, [roundToArcMinute(v[0])] as [number]])
+          Object.entries(astroPlanets).map(([k, v]) => [k, [roundToArcMinute(v[0]), v[1]]])
         ),
         cusps: cusps.map(roundToArcMinute),
         aspects: astroAspects,

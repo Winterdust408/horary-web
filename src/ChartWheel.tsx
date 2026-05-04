@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Chart as AstroChart } from '@astrodraw/astrochart'
 
-export function ChartWheel({ data }: { data: { planets: Record<string, [number]>; cusps: number[]; aspects: any[] } }) {
+export function ChartWheel({ data }: { data: { planets: Record<string, number[]>; cusps: number[]; aspects: any[] } }) {
   const containerId = 'horary-wheel'
 
   useEffect(() => {
@@ -15,6 +15,12 @@ export function ChartWheel({ data }: { data: { planets: Record<string, [number]>
           trine: { degree: 120, orbit: 8, color: '#27AE60' },
           opposition: { degree: 180, orbit: 10, color: '#FF0000' },
         },
+        SHOW_DIGNITIES_TEXT: false,
+        DIGNITIES_RULERSHIP: '',
+        DIGNITIES_DETRIMENT: '',
+        DIGNITIES_EXALTATION: '',
+        DIGNITIES_EXACT_EXALTATION: '',
+        DIGNITIES_FALL: '',
       } as any)
       const radix = chart.radix({ planets: data.planets, cusps: data.cusps })
       radix.aspects(data.aspects)

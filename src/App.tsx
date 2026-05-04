@@ -46,11 +46,11 @@ function App() {
   const [lonSign, setLonSign] = useState<'E' | 'W'>('W')
   const [question, setQuestion] = useState('')
   const [showSettings, setShowSettings] = useState(false)
-  const [showAngles, setShowAngles] = useState(true)
-  const [showHouses, setShowHouses] = useState(true)
-  const [showPlanets, setShowPlanets] = useState(true)
-  const [showAspects, setShowAspects] = useState(true)
-  const [showAspectGrid, setShowAspectGrid] = useState(true)
+  const [showAngles, setShowAngles] = useState(false)
+  const [showHouses, setShowHouses] = useState(false)
+  const [showPlanets, setShowPlanets] = useState(false)
+  const [showAspects, setShowAspects] = useState(false)
+  const [showAspectGrid, setShowAspectGrid] = useState(false)
   const [locationInputMode, setLocationInputMode] = useState<'search' | 'coordinates'>('search')
   const settingsRef = useRef<HTMLDivElement>(null)
 
@@ -258,7 +258,7 @@ function App() {
   )
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 24, textAlign: 'left' }}>
+    <div style={{ maxWidth: 568, margin: '0 auto', padding: 24, textAlign: 'left' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', position: 'relative', zIndex: 200 }}>
         <h1 style={{ marginBottom: 4 }}>Horary Calculator</h1>
         <div style={{ position: 'relative' }} ref={settingsRef}>
@@ -300,18 +300,6 @@ function App() {
         </div>
       )}
 
-      <label style={{ display: 'block', marginBottom: 16 }}>
-        Question
-        <textarea
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          onInput={(e) => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
-          placeholder="What is your question?"
-          rows={1}
-          style={{ display: 'block', width: '100%', marginTop: 4, boxSizing: 'border-box', resize: 'none', overflow: 'hidden', fontFamily: 'inherit', fontSize: 'inherit' }}
-        />
-      </label>
-
       {isEditing && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 12 }}>
@@ -351,7 +339,32 @@ function App() {
           <button style={{ marginTop: 12 }} onClick={resetToNow}>
             Use current time &amp; place
           </button>
+          <label style={{ display: 'block', marginTop: 16 }}>
+            Question
+            <textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onInput={(e) => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
+              placeholder="What is your question?"
+              rows={1}
+              style={{ display: 'block', width: '100%', marginTop: 4, boxSizing: 'border-box', resize: 'none', overflow: 'hidden', fontFamily: 'inherit', fontSize: 'inherit' }}
+            />
+          </label>
         </div>
+      )}
+
+      {!isEditing && (
+        <label style={{ display: 'block', marginBottom: 16 }}>
+          Question
+          <textarea
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onInput={(e) => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
+            placeholder="What is your question?"
+            rows={1}
+            style={{ display: 'block', width: '100%', marginTop: 4, boxSizing: 'border-box', resize: 'none', overflow: 'hidden', fontFamily: 'inherit', fontSize: 'inherit' }}
+          />
+        </label>
       )}
 
       {chart.summary ? (
@@ -400,7 +413,7 @@ function App() {
             )}
 
             {(showPlanets || showAspects) && (
-              <div style={{ padding: '12px 12px 12px 6px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, minWidth: 0 }}>
+              <div style={{ padding: '12px 12px 12px 6px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, minWidth: 0, overflow: 'hidden' }}>
                 {showPlanets && (
                   <>
                     <h2 style={{ marginTop: 0 }}>Planets</h2>
