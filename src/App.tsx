@@ -130,6 +130,7 @@ function App() {
       setLocationTimezone(d.timezone)
     }
     setLocationName('')
+    if (!detectedLocation.current) setLocationTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
     setIsEditing(false)
   }
 
@@ -152,7 +153,7 @@ function App() {
   }
 
   async function searchLocation() {
-    if (!locationName.trim()) return
+    if (!locationName.trim() || locationSearching) return
     setLocationSearching(true)
     setLocationError('')
     try {

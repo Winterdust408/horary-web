@@ -47,7 +47,8 @@ export function dmsToDecimal(
 
 function calcOrb(pos1: number, pos2: number, aspectDeg: number): number {
   const diff = ((pos1 - pos2) % 360 + 360) % 360
-  return Math.min(Math.abs(diff - aspectDeg), Math.abs(diff - aspectDeg + 360), Math.abs(diff - aspectDeg - 360))
+  const orb = (target: number) => Math.min(Math.abs(diff - target), 360 - Math.abs(diff - target))
+  return Math.min(orb(aspectDeg), orb(360 - aspectDeg))
 }
 
 function isApplying(pos1: number, speed1: number, pos2: number, speed2: number, aspectDeg: number): boolean {
