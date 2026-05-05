@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { calculateChart, dmsToDecimal, dtLocalNowValue, formatDeg } from './chartCalc'
 import { ChartWheel } from './ChartWheel'
 import { AspectGrid } from './AspectGrid'
@@ -6,11 +6,12 @@ import './App.css'
 
 function decimalToDMS(decimal: number): { deg: string; min: string; sec: string } {
   const abs = Math.abs(decimal)
-  const deg = Math.floor(abs)
+  let deg = Math.floor(abs)
   const minFloat = (abs - deg) * 60
   let min = Math.floor(minFloat)
   let sec = Math.round((minFloat - min) * 60)
   if (sec >= 60) { sec = 0; min += 1 }
+  if (min >= 60) { min = 0; deg += 1 }
   return { deg: String(deg), min: String(min).padStart(2, '0'), sec: String(sec).padStart(2, '0') }
 }
 
@@ -54,6 +55,13 @@ function App() {
   const [showAspectGrid, setShowAspectGrid] = useState(false)
   const [locationInputMode, setLocationInputMode] = useState<'search' | 'coordinates'>('search')
   const settingsRef = useRef<HTMLDivElement>(null)
+  const questionEditRef = useRef<HTMLTextAreaElement>(null)
+  const questionViewRef = useRef<HTMLTextAreaElement>(null)
+
+  useLayoutEffect(() => {
+    const ref = isEditing ? questionEditRef.current : questionViewRef.current
+    if (ref) { ref.style.height = 'auto'; ref.style.height = ref.scrollHeight + 'px' }
+  }, [question, isEditing])
 
   useEffect(() => {
     if (!showSettings) return
@@ -121,6 +129,7 @@ function App() {
       setLonDeg(d.lonDeg); setLonMin(d.lonMin); setLonSec(d.lonSec); setLonSign(d.lonSign)
       setLocationTimezone(d.timezone)
     }
+    setLocationName('')
     setIsEditing(false)
   }
 
@@ -343,9 +352,9 @@ function App() {
           <label style={{ display: 'block', marginTop: 16 }}>
             Question
             <textarea
+              ref={questionEditRef}
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              onInput={(e) => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
               placeholder="What is your question?"
               rows={1}
               style={{ display: 'block', width: '100%', marginTop: 4, boxSizing: 'border-box', resize: 'none', overflow: 'hidden', fontFamily: 'inherit', fontSize: 'inherit' }}
@@ -358,9 +367,9 @@ function App() {
         <label style={{ display: 'block', marginBottom: 16 }}>
           Question
           <textarea
+            ref={questionViewRef}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            onInput={(e) => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
             placeholder="What is your question?"
             rows={1}
             style={{ display: 'block', width: '100%', marginTop: 4, boxSizing: 'border-box', resize: 'none', overflow: 'hidden', fontFamily: 'inherit', fontSize: 'inherit' }}

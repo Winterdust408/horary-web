@@ -21,7 +21,7 @@ export function formatDeg(deg: number) {
   const d = Math.floor(deg)
   const mFloat = (deg - d) * 60
   const m = Math.floor(mFloat)
-  return `${d}°${pad2(m)}'`
+  return `${d}°${pad2(m)}′`
 }
 
 /** Format decimal degrees as degrees and arc minutes (e.g. for aspect orbs). */

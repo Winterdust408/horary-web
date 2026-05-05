@@ -49,7 +49,7 @@ export function AspectGrid({ planets, aspects }: { planets: string[]; aspects: A
                   <td key={col} style={{ padding: '4px 2px', textAlign: 'center', border: '1px solid #666', minWidth: 32 }}>
                     {asp ? (
                       <span
-                        title={`${asp.type} ${asp.orb} — ${asp.applying == null ? '' : asp.applying ? 'applying' : 'separating'}`}
+                        title={`${asp.type.charAt(0).toUpperCase() + asp.type.slice(1)} ${asp.orb} — ${asp.applying == null ? '' : asp.applying ? 'applying' : 'separating'}`}
                         style={{ color: ASPECT_COLORS[asp.type] ?? '#aaa', fontSize: '1.1em', cursor: 'default' }}
                       >
                         {ASPECT_SYMBOLS[asp.type] ?? asp.type.slice(0, 3)}
