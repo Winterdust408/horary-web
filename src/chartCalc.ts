@@ -107,6 +107,11 @@ export function calculateChart(dt: Date, lat: number, lon: number): { summary?: 
       }
     })
 
+    const MEAN_DAILY_MOTION: Record<string, number> = {
+      Sun: 0.9856, Moon: 13.176, Mercury: 1.3833, Venus: 1.2, Mars: 0.524,
+      Jupiter: 0.0831, Saturn: 0.0335, Uranus: 0.0119, Neptune: 0.0061, Pluto: 0.004,
+    }
+
     const bodyKeys: Array<[string, string]> = [
       ['sun', 'Sun'],
       ['moon', 'Moon'],
@@ -127,7 +132,8 @@ export function calculateChart(dt: Date, lat: number, lon: number): { summary?: 
         const b: any = (horoscope.CelestialBodies as any)[key]
         if (!b) return undefined
         const ecliptic = b.ChartPosition?.Ecliptic?.DecimalDegrees
-        planetSpeeds[name] = b.motion?.oneSecondMotionAmount ?? 0
+        const dailyMotion = MEAN_DAILY_MOTION[name] ?? 0
+        planetSpeeds[name] = (b.isRetrograde ? -dailyMotion : dailyMotion) / 86400
         planetRetrograde[name] = b.isRetrograde ?? false
         return {
           key,

@@ -8,9 +8,10 @@ function decimalToDMS(decimal: number): { deg: string; min: string; sec: string 
   const abs = Math.abs(decimal)
   const deg = Math.floor(abs)
   const minFloat = (abs - deg) * 60
-  const min = Math.floor(minFloat)
-  const sec = Math.round((minFloat - min) * 60)
-  return { deg: String(deg), min: String(min), sec: String(sec) }
+  let min = Math.floor(minFloat)
+  let sec = Math.round((minFloat - min) * 60)
+  if (sec >= 60) { sec = 0; min += 1 }
+  return { deg: String(deg), min: String(min).padStart(2, '0'), sec: String(sec).padStart(2, '0') }
 }
 
 function fmtDMS(deg: string, min: string, sec: string, sign: string) {
@@ -187,11 +188,11 @@ function App() {
     <>
       <div style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: '0.9em' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-          <input type="radio" name="locationInputMode" value="search" checked={locationInputMode === 'search'} onChange={() => setLocationInputMode('search')} />
+          <input type="radio" name="locationInputMode" value="search" checked={locationInputMode === 'search'} onChange={() => { setLocationInputMode('search'); setLocationError('') }} />
           Search by city
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-          <input type="radio" name="locationInputMode" value="coordinates" checked={locationInputMode === 'coordinates'} onChange={() => setLocationInputMode('coordinates')} />
+          <input type="radio" name="locationInputMode" value="coordinates" checked={locationInputMode === 'coordinates'} onChange={() => { setLocationInputMode('coordinates'); setLocationError('') }} />
           Enter coordinates
         </label>
       </div>
@@ -369,7 +370,7 @@ function App() {
 
       {chart.summary ? (
         <>
-          <div style={{ marginTop: 16, padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8 }}>
+          <div style={{ marginTop: 16, padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, overflowX: 'auto' }}>
             <h2 style={{ marginTop: 0 }}>Chart wheel</h2>
             <ChartWheel data={chart.summary.astroChartData} />
           </div>
@@ -383,7 +384,7 @@ function App() {
           </div>
         ) : chart.summary ? (
           <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: (showAngles || showHouses) && (showPlanets || showAspects) ? '1fr 1fr' : '1fr', gap: 0 }}>
             {(showAngles || showHouses) && (
               <div style={{ padding: '12px 6px 12px 12px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, minWidth: 0 }}>
                 {showAngles && (
@@ -433,7 +434,7 @@ function App() {
                       {chart.summary.aspectsList.length === 0 && <li>No aspects found with default orbs.</li>}
                       {chart.summary.aspectsList.map((a, idx) => (
                         <li key={`${a.from}-${a.to}-${idx}`}>
-                          <b>{a.from}</b> {a.type} <b>{a.to}</b> {a.orb}{a.applying != null ? ` — ${a.applying ? 'applying' : 'separating'}` : ''}
+                          <b>{a.from}</b> {a.type.charAt(0).toUpperCase() + a.type.slice(1)} <b>{a.to}</b> {a.orb}{a.applying != null ? ` — ${a.applying ? 'applying' : 'separating'}` : ''}
                         </li>
                       ))}
                     </ul>
