@@ -165,6 +165,7 @@ function App() {
       if (!data.length) { setLocationError('Location not found.'); return }
       const lat = parseFloat(data[0].lat)
       const lon = parseFloat(data[0].lon)
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) { setLocationError('Invalid coordinates returned.'); return }
       const ld = decimalToDMS(lat)
       const lo = decimalToDMS(lon)
       setLatDeg(ld.deg); setLatMin(ld.min); setLatSec(ld.sec)
@@ -378,7 +379,7 @@ function App() {
         </label>
       )}
 
-      {chart.summary ? (
+      {(!geolocating || isEditing) && chart.summary ? (
         <>
           <div style={{ marginTop: 16, padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, overflowX: 'auto' }}>
             <h2 style={{ marginTop: 0 }}>Chart wheel</h2>
@@ -388,11 +389,11 @@ function App() {
       ) : null}
 
       <div style={{ marginTop: 16 }}>
-        {chart.error ? (
+        {(!geolocating || isEditing) && chart.error ? (
           <div style={{ padding: 12, border: '1px solid #c33', borderRadius: 8 }}>
             <b>Error:</b> {chart.error}
           </div>
-        ) : chart.summary ? (
+        ) : (!geolocating || isEditing) && chart.summary ? (
           <>
           <div style={{ display: 'grid', gridTemplateColumns: (showAngles || showHouses) && (showPlanets || showAspects) ? '1fr 1fr' : '1fr', gap: 0 }}>
             {(showAngles || showHouses) && (
