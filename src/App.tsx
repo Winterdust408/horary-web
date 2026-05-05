@@ -412,13 +412,13 @@ function App() {
                 {showHouses && (
                   <>
                     <h2 style={{ marginTop: showAngles ? 16 : 0 }}>Houses</h2>
-                    <ol style={{ marginTop: 8 }}>
+                    <ul style={{ marginTop: 8 }}>
                       {chart.summary.houses.map((h) => (
                         <li key={h.house}>
                           <b>House {h.house}:</b> {h.sign} {h.formatted || formatDeg(h.eclipticDegrees)}
                         </li>
                       ))}
-                    </ol>
+                    </ul>
                   </>
                 )}
               </div>

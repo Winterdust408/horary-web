@@ -11,6 +11,7 @@ export function ChartWheel({ data }: { data: { planets: Record<string, number[]>
       const chart = new AstroChart(containerId, 520, 520, {
         ASPECTS: {
           conjunction: { degree: 0, orbit: 10, color: 'transparent' },
+          sextile: { degree: 60, orbit: 6, color: '#5a5' },
           square: { degree: 90, orbit: 8, color: '#FF4500' },
           trine: { degree: 120, orbit: 8, color: '#27AE60' },
           opposition: { degree: 180, orbit: 10, color: '#FF0000' },
