@@ -24,12 +24,13 @@ function App() {
   const [dateLocal, setDateLocal] = useState(now.slice(0, 10))
   const [timeHour, setTimeHour] = useState(now.slice(11, 13))
   const [timeMinute, setTimeMinute] = useState(now.slice(14, 16))
-  const [use24Hour, setUse24Hour] = useState(false)
   const [amPm, setAmPm] = useState<'AM' | 'PM'>(Number(now.slice(11, 13)) < 12 ? 'AM' : 'PM')
 
   const [isEditing, setIsEditing] = useState(false)
   const [geolocating, setGeolocating] = useState(true)
   const [locationDetected, setLocationDetected] = useState(false)
+  const [locationSet, setLocationSet] = useState(false)
+  const [geoError, setGeoError] = useState('')
   const detectedLocation = useRef<{ latDeg: string; latMin: string; latSec: string; latSign: 'N' | 'S'; lonDeg: string; lonMin: string; lonSec: string; lonSign: 'E' | 'W'; timezone: string } | null>(null)
 
   const [locationName, setLocationName] = useState('')
@@ -48,11 +49,12 @@ function App() {
   const [lonSign, setLonSign] = useState<'E' | 'W'>('W')
   const [question, setQuestion] = useState('')
   const [showSettings, setShowSettings] = useState(false)
-  const [showAngles, setShowAngles] = useState(false)
-  const [showHouses, setShowHouses] = useState(false)
-  const [showPlanets, setShowPlanets] = useState(false)
-  const [showAspects, setShowAspects] = useState(false)
-  const [showAspectGrid, setShowAspectGrid] = useState(false)
+  const [showAngles, setShowAngles] = useState(() => localStorage.getItem('showAngles') === 'true')
+  const [showHouses, setShowHouses] = useState(() => localStorage.getItem('showHouses') === 'true')
+  const [showPlanets, setShowPlanets] = useState(() => localStorage.getItem('showPlanets') === 'true')
+  const [showAspects, setShowAspects] = useState(() => localStorage.getItem('showAspects') === 'true')
+  const [showAspectGrid, setShowAspectGrid] = useState(() => localStorage.getItem('showAspectGrid') === 'true')
+  const [use24Hour, setUse24Hour] = useState(() => localStorage.getItem('use24Hour') === 'true')
   const [locationInputMode, setLocationInputMode] = useState<'search' | 'coordinates'>('search')
   const settingsRef = useRef<HTMLDivElement>(null)
   const questionEditRef = useRef<HTMLTextAreaElement>(null)
@@ -74,8 +76,11 @@ function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showSettings])
 
-  useEffect(() => {
-    if (!navigator.geolocation) { setGeolocating(false); return }
+
+  function detectLocation() {
+    if (!navigator.geolocation) { setGeolocating(false); setGeoError('Geolocation is not supported by this browser.'); return }
+    setGeolocating(true)
+    setGeoError('')
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const lat = pos.coords.latitude
@@ -110,12 +115,15 @@ function App() {
           setDetectedCityName([city, country].filter(Boolean).join(', '))
         } catch { /* city name lookup failed */ }
         setLocationDetected(true)
+        setLocationSet(true)
         setGeolocating(false)
       },
-      () => { setGeolocating(false); setLocationDetected(false) },
+      (err) => { setGeolocating(false); setLocationDetected(false); setGeoError(err.code === 1 ? 'Location access denied. Allow it in your browser settings.' : 'Could not detect location.') },
       { timeout: 10000 }
     )
-  }, [])
+  }
+
+  useEffect(() => { detectLocation() }, [])
 
   function resetToNow() {
     const n = dtLocalNowValue()
@@ -172,6 +180,7 @@ function App() {
       setLatSign(lat >= 0 ? 'N' : 'S')
       setLonDeg(lo.deg); setLonMin(lo.min); setLonSec(lo.sec)
       setLonSign(lon >= 0 ? 'E' : 'W')
+      setLocationSet(true)
       try {
         const tzRes = await fetch(`https://timeapi.io/api/timezone/coordinate?latitude=${lat}&longitude=${lon}`)
         const tzData = await tzRes.json()
@@ -277,21 +286,28 @@ function App() {
           <button onClick={() => setShowSettings(s => !s)} style={{ fontSize: '1.2em', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.7 }} title="Settings">⚙</button>
           {showSettings && (
             <div style={{ position: 'absolute', right: 0, top: '100%', background: '#ffffff', color: '#000000', border: '1px solid #ccc', borderRadius: 8, padding: 12, minWidth: 220, zIndex: 9999 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
-                <input type="checkbox" checked={use24Hour} onChange={(e) => setUse24Hour(e.target.checked)} />
-                Use 24-hour time
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                <input type="checkbox" checked={isEditing} onChange={(e) => { setIsEditing(e.target.checked); if (!e.target.checked) resetToNow() }} />
+                Look up past question
               </label>
               <hr style={{ border: 'none', borderTop: '1px solid #ddd', margin: '8px 0' }} />
               {[['showAngles', 'Show angles', showAngles, setShowAngles], ['showHouses', 'Show houses', showHouses, setShowHouses], ['showPlanets', 'Show planets', showPlanets, setShowPlanets], ['showAspects', 'Show aspects list', showAspects, setShowAspects], ['showAspectGrid', 'Show aspects chart', showAspectGrid, setShowAspectGrid]].map(([key, label, value, setter]) => (
                 <label key={key as string} style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', marginBottom: 4 }}>
-                  <input type="checkbox" checked={value as boolean} onChange={(e) => (setter as (v: boolean) => void)(e.target.checked)} />
+                  <input type="checkbox" checked={value as boolean} onChange={(e) => { localStorage.setItem(key as string, String(e.target.checked)); (setter as (v: boolean) => void)(e.target.checked) }} />
                   {label as string}
                 </label>
               ))}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', marginTop: 4 }}>
+                <input type="checkbox"
+                  checked={showAngles && showHouses && showPlanets && showAspects && showAspectGrid}
+                  onChange={(e) => { const v = e.target.checked; localStorage.setItem('showAngles', String(v)); localStorage.setItem('showHouses', String(v)); localStorage.setItem('showPlanets', String(v)); localStorage.setItem('showAspects', String(v)); localStorage.setItem('showAspectGrid', String(v)); setShowAngles(v); setShowHouses(v); setShowPlanets(v); setShowAspects(v); setShowAspectGrid(v) }}
+                />
+                Show all
+              </label>
               <hr style={{ border: 'none', borderTop: '1px solid #ddd', margin: '8px 0' }} />
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', cursor: 'pointer' }}>
-                <input type="checkbox" checked={isEditing} onChange={(e) => { setIsEditing(e.target.checked); if (!e.target.checked) resetToNow() }} />
-                I'm looking up a past question
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+                <input type="checkbox" checked={use24Hour} onChange={(e) => { localStorage.setItem('use24Hour', String(e.target.checked)); setUse24Hour(e.target.checked) }} />
+                Use 24-hour time
               </label>
             </div>
           )}
@@ -308,7 +324,13 @@ function App() {
           {!geolocating && locationDetected && (
             <div><b>Location:</b> {detectedCityName || `${fmtDMS(latDeg, latMin, latSec, latSign)}, ${fmtDMS(lonDeg, lonMin, lonSec, lonSign)}`}</div>
           )}
-          {!geolocating && !locationDetected && locationFields}
+          {!geolocating && !locationDetected && (
+            <>
+              <button onClick={detectLocation} style={{ marginBottom: geoError ? 6 : 12 }}>Detect my location</button>
+              {geoError && <div style={{ color: '#c55', marginBottom: 10, fontSize: '0.9em' }}>{geoError}{/Chrome|Firefox|Safari|Edge/.test(navigator.userAgent) && !/Mobi|Android/i.test(navigator.userAgent) ? ' Click the lock icon in your browser\'s address bar to reset it.' : ''}</div>}
+              {locationFields}
+            </>
+          )}
         </div>
       )}
 
@@ -379,7 +401,7 @@ function App() {
         </label>
       )}
 
-      {(!geolocating || isEditing) && chart.summary ? (
+      {(isEditing || locationSet) && chart.summary ? (
         <>
           <div style={{ marginTop: 16, padding: 12, border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, overflowX: 'auto' }}>
             <h2 style={{ marginTop: 0 }}>Chart wheel</h2>
@@ -389,11 +411,11 @@ function App() {
       ) : null}
 
       <div style={{ marginTop: 16 }}>
-        {(!geolocating || isEditing) && chart.error ? (
+        {(isEditing || locationSet) && chart.error ? (
           <div style={{ padding: 12, border: '1px solid #c33', borderRadius: 8 }}>
             <b>Error:</b> {chart.error}
           </div>
-        ) : (!geolocating || isEditing) && chart.summary ? (
+        ) : (isEditing || locationSet) && chart.summary ? (
           <>
           <div style={{ display: 'grid', gridTemplateColumns: (showAngles || showHouses) && (showPlanets || showAspects) ? '1fr 1fr' : '1fr', gap: 0 }}>
             {(showAngles || showHouses) && (
